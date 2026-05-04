@@ -1,0 +1,59 @@
+azure-icons-for-architecture-diagrams
+Copyright (c) 2026 hanv89
+
+This repository hosts Microsoft Azure icons (sourced via the
+plantuml-stdlib/Azure-PlantUML upstream redistribution) for use in
+architecture diagrams, training materials, and documentation as
+permitted by Microsoft's Azure Architecture Icons Terms of Use.
+
+This project is not affiliated with or endorsed by Microsoft Corporation.
+All Microsoft product names and icons are trademarks of Microsoft
+Corporation.
+
+================================================================================
+THIRD-PARTY NOTICES
+================================================================================
+
+Azure-PlantUML (intermediate redistribution source for the Azure icons):
+  Source:    https://github.com/plantuml-stdlib/Azure-PlantUML
+  Captured:  2026-05-02 at upstream commit
+             f360835f8794e18bed6520bb2eea56b482816d95
+  License:   MIT
+  Copyright: Copyright (c) 2018-2019 Ricardo Niepel,
+             2021-2022 Ricardo Niepel and contributors
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.
+
+Microsoft Azure Architecture Icons (original icon source):
+  Source:   https://learn.microsoft.com/en-us/azure/architecture/icons/
+  Captured: 2026-05-02 (page last updated 2026-03-17)
+  Terms:    "Microsoft permits the use of these icons in architectural
+            diagrams, training materials, or documentation. You can copy,
+            distribute, and display the icons only for the permitted use
+            unless granted explicit permission by Microsoft. Microsoft
+            reserves all other rights."
+
+  Restrictions on icon use (verbatim from Microsoft):
+    - Don't crop, flip, or rotate icons.
+    - Don't distort or change icon shape in any way.
+    - Don't use Microsoft product icons to represent your product or service.
+
+Microsoft Trademark and Brand Guidelines (governs trademark rights to the
+Microsoft logos and product icons redistributed here):
+  Source: https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general
