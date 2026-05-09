@@ -13,27 +13,27 @@ Examples:
   azure-arch-skill list
 `;
 
-function install(_argv: string[]): number {
+async function install(_argv: string[]): Promise<number> {
   process.stderr.write("[stub] install: not yet implemented (Claude Code adapter coming next).\n");
   return 0;
 }
 
-function uninstall(_argv: string[]): number {
+async function uninstall(_argv: string[]): Promise<number> {
   process.stderr.write("[stub] uninstall: not yet implemented.\n");
   return 0;
 }
 
-function update(_argv: string[]): number {
+async function update(_argv: string[]): Promise<number> {
   process.stderr.write("[stub] update: not yet implemented.\n");
   return 0;
 }
 
-function list(_argv: string[]): number {
+async function list(_argv: string[]): Promise<number> {
   process.stderr.write("[stub] list: not yet implemented.\n");
   return 0;
 }
 
-function main(argv: string[]): number {
+async function main(argv: string[]): Promise<number> {
   const [, , subcommand, ...rest] = argv;
 
   if (!subcommand) {
@@ -54,4 +54,4 @@ function main(argv: string[]): number {
   }
 }
 
-process.exit(main(process.argv));
+main(process.argv).then(code => process.exit(code));
