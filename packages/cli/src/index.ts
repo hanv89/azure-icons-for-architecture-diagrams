@@ -41,6 +41,12 @@ async function list(argv: string[]): Promise<number> {
   return 0;
 }
 
+function readVersion(): string {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const pkg = require("../package.json") as { version: string };
+  return pkg.version;
+}
+
 async function main(argv: string[]): Promise<number> {
   const [, , subcommand, ...rest] = argv;
 
@@ -54,8 +60,13 @@ async function main(argv: string[]): Promise<number> {
     case "uninstall": return uninstall(rest);
     case "update":    return update(rest);
     case "list":      return list(rest);
+    case "help":
     case "-h":
     case "--help":    process.stdout.write(USAGE); return 0;
+    case "version":
+    case "-v":
+    case "-V":
+    case "--version": process.stdout.write(readVersion() + "\n"); return 0;
     default:
       process.stderr.write(`Unknown subcommand: ${subcommand}\n\n${USAGE}`);
       return 1;
