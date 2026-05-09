@@ -1,6 +1,7 @@
 {
   "name": "@hanv89/azure-arch-skill",
   "version": "0.0.0",
+  "private": true,
   "description": "Install the Azure architecture diagram skill into your AI coding agent (Claude Code, Codex CLI, Cursor).",
   "bin": {
     "azure-arch-skill": "dist/index.js"
