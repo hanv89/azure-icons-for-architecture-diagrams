@@ -13,22 +13,30 @@ Examples:
   azure-arch-skill list
 `;
 
-async function install(_argv: string[]): Promise<number> {
+function wantsHelp(argv: string[]): boolean {
+  return argv.includes("-h") || argv.includes("--help") || argv.includes("help");
+}
+
+async function install(argv: string[]): Promise<number> {
+  if (wantsHelp(argv)) { process.stdout.write(USAGE); return 0; }
   process.stderr.write("[stub] install: not yet implemented (Claude Code adapter coming next).\n");
   return 0;
 }
 
-async function uninstall(_argv: string[]): Promise<number> {
+async function uninstall(argv: string[]): Promise<number> {
+  if (wantsHelp(argv)) { process.stdout.write(USAGE); return 0; }
   process.stderr.write("[stub] uninstall: not yet implemented.\n");
   return 0;
 }
 
-async function update(_argv: string[]): Promise<number> {
+async function update(argv: string[]): Promise<number> {
+  if (wantsHelp(argv)) { process.stdout.write(USAGE); return 0; }
   process.stderr.write("[stub] update: not yet implemented.\n");
   return 0;
 }
 
-async function list(_argv: string[]): Promise<number> {
+async function list(argv: string[]): Promise<number> {
+  if (wantsHelp(argv)) { process.stdout.write(USAGE); return 0; }
   process.stderr.write("[stub] list: not yet implemented.\n");
   return 0;
 }
