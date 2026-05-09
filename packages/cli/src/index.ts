@@ -14,7 +14,7 @@ Examples:
 `;
 
 function install(_argv: string[]): number {
-  process.stderr.write("[stub] install: not yet implemented (Phase 0.9 will land Claude Code adapter).\n");
+  process.stderr.write("[stub] install: not yet implemented (Claude Code adapter coming next).\n");
   return 0;
 }
 
