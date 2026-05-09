@@ -24,6 +24,10 @@
     "type": "git",
     "url": "git+https://github.com/hanv89/azure-icons-for-architecture-diagrams.git"
   },
+  "bugs": {
+    "url": "https://github.com/hanv89/azure-icons-for-architecture-diagrams/issues"
+  },
+  "homepage": "https://github.com/hanv89/azure-icons-for-architecture-diagrams#readme",
   "publishConfig": {
     "access": "public"
   },
