@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /packages/cli
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    versioning-strategy: increase
+    groups:
+      typescript-toolchain:
+        patterns:
+          - typescript
+          - "@types/*"
