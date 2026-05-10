@@ -21,14 +21,15 @@ export interface ListOptions {
 /**
  * Every CLI adapter implements this interface.
  *
- * Methods MUST NOT throw — wrap I/O in try/catch and return a numeric exit code
- * per D-014h. The top-level `.catch` in src/index.ts only covers commander
- * `parseAsync` rejections, not adapter-internal errors.
+ * Methods MUST resolve to a numeric exit code; wrap I/O in try/catch and
+ * return that code, OR delegate to a method that already does so. The
+ * top-level `.catch` in src/index.ts only covers commander parser
+ * rejections, not adapter-internal errors.
  *
- * Adding a 5th method (e.g. `verify`, `doctor`) requires synchronized rev
- * across every adapter — accept this rigid contract for the small set of
- * adapters in scope through Phase 1.x. If capability discovery becomes
- * necessary, switch to optional methods (`verify?: ...`) at that point.
+ * Adding a 5th method requires synchronized rev across every adapter
+ * — accept this rigid contract for the small adapter set in scope. If
+ * capability discovery becomes necessary later, switch to optional
+ * methods (`verify?: ...`) at that point.
  */
 export interface Adapter {
   install(opts: InstallOptions):     Promise<number>;

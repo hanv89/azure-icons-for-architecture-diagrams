@@ -177,7 +177,7 @@ async function install(opts: InstallOptions): Promise<number> {
     const canaryUrl = `${base}/${CANARY_ICON_PATH}`;
     const reachable = await headOk(canaryUrl);
     if (!reachable) {
-      process.stderr.write(`fatal: icon-set unreachable - HEAD ${canaryUrl} failed (skill declares requires_icons=${fm.requires_icons}; Phase 0.9 only verifies reachability, full version match deferred to Phase 1.5)\n`);
+      process.stderr.write(`fatal: icon-set unreachable - HEAD ${canaryUrl} failed (skill declares requires_icons=${fm.requires_icons}; this release verifies reachability only, strict semver match planned)\n`);
       return 1;
     }
 
