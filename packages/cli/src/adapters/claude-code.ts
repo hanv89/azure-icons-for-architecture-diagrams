@@ -5,6 +5,11 @@ import pkg from "../../package.json";
 import { Adapter, InstallOptions, UninstallOptions, UpdateOptions, ListOptions } from "./types";
 
 const DEFAULT_BASE_RAW_URL = "https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main";
+
+// SKILL_NAME must stay in lockstep with dist/skill/SKILL.md frontmatter `name`.
+// Renaming the skill is a breaking change requiring a coordinated CLI release;
+// existing installs become un-uninstallable until users upgrade the CLI
+// (uninstall's allow-list refuses folders whose SKILL.md `name` differs).
 const SKILL_NAME = "azure-architecture-diagram";
 
 interface BundleFile { src: string; dest: string; }
@@ -149,7 +154,7 @@ interface Frontmatter {
  * (name, description, version, requires_icons). Swap in `js-yaml` when the
  * format grows beyond that.
  */
-function parseFrontmatter(md: string): Frontmatter {
+export function parseFrontmatter(md: string): Frontmatter {
   // Strip optional UTF-8 BOM (some editors emit it on save).
   const text = md.replace(/^﻿/, "");
   const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -158,7 +163,12 @@ function parseFrontmatter(md: string): Frontmatter {
   for (const line of match[1].split(/\r?\n/)) {
     const kv = line.match(/^(\w+):\s*(.*?)\s*$/);
     if (!kv) continue;
-    const [, key, rawValue] = kv;
+    const [, key] = kv;
+    let rawValue = kv[2];
+    // Strip trailing ` # comment` from unquoted scalars.
+    if (!rawValue.startsWith('"') && !rawValue.startsWith("'")) {
+      rawValue = rawValue.replace(/\s+#.*$/, "");
+    }
     const value = rawValue.replace(/^["']|["']$/g, "");
     if (key === "name" || key === "version" || key === "requires_icons") {
       out[key] = value;

@@ -68,15 +68,33 @@ echo "PASS  build"
 
 # Step 3 — exit-code contracts.
 # `list --agent=claude-code` against an empty/missing skills root exits 0
-# (prints '(no skills installed)') because commander has no global default
-# action; per commander convention, no-subcommand exits 1 with help.
-assert_exit "list --agent=claude-code exits 0"   0 node dist/index.js list --agent=claude-code --target=/tmp/azure-arch-smoke-empty-skills-root
-assert_exit "no-arg exits 1 (commander)"          1 node dist/index.js
-assert_exit "bogus  exits 1"                       1 node dist/index.js bogus
-assert_exit "unknown agent exits 1"                1 node dist/index.js install --agent=bogus
-assert_exit "--help exits 0"                       0 node dist/index.js --help
-assert_exit "version prints exits 0"               0 node dist/index.js --version
-assert_exit "install --help exits 0"               0 node dist/index.js install --help
+# (prints '(no skills installed)'). Production code path requires the target
+# to live inside ~/.claude (default allow-list); tests opt into a wider root
+# via AZURE_ARCH_SKILL_TARGET_ROOT, set to a fresh mktemp dir per run so
+# concurrent smoke runs don't collide and a /tmp symlink-plant attack
+# (Linux TOCTOU) cannot redirect the test target.
+TEST_TARGET_ROOT="$(mktemp -d)"
+trap 'rm -rf "${TEST_TARGET_ROOT}"' EXIT
+
+assert_exit "list (empty root) exits 0"   0 \
+  env AZURE_ARCH_SKILL_TARGET_ROOT="${TEST_TARGET_ROOT}" \
+  node dist/index.js list --agent=claude-code --target="${TEST_TARGET_ROOT}/empty-skills-root"
+assert_exit "no-arg exits 1 (commander)"   1 node dist/index.js
+assert_exit "bogus  exits 1"               1 node dist/index.js bogus
+assert_exit "unknown agent exits 1"        1 node dist/index.js install --agent=bogus
+assert_exit "--help exits 0"               0 node dist/index.js --help
+assert_exit "version prints exits 0"       0 node dist/index.js --version
+assert_exit "install --help exits 0"       0 node dist/index.js install --help
+
+# Step 4 — node:test unit tests (parseFrontmatter regression coverage).
+echo "INFO  running unit tests..."
+if npm test --silent; then
+  echo "PASS  unit tests"
+  PASSED=$((PASSED + 1))
+else
+  echo "FAIL  unit tests"
+  FAILED=$((FAILED + 1))
+fi
 
 echo
 echo "Summary: ${PASSED} passed, ${FAILED} failed."

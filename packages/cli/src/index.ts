@@ -31,8 +31,11 @@ function defineSubcommand(name: keyof Adapter, description: string): void {
     .requiredOption("--agent <name>", `target AI agent (${SUPPORTED_AGENTS.join("|")})`)
     .option("--target <dir>", "override target directory (validation use)")
     .action(async (opts) => {
-      const code = await pickAdapter(opts.agent)[name]({ target: opts.target });
-      process.exit(code);
+      // Set process.exitCode so any pending async cleanup (file handles, the
+      // override-warning stderr write) drains before the event loop empties.
+      // Both this top-level path and adapter-internal failures emit a single
+      // '^fatal: ' prefix line on stderr — log-parsers can rely on the prefix.
+      process.exitCode = await pickAdapter(opts.agent)[name]({ target: opts.target });
     });
 }
 
