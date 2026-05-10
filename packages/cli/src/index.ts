@@ -1,63 +1,64 @@
 #!/usr/bin/env node
 
+import { Command } from "commander";
 import pkg from "../package.json";
+import { claudeCodeAdapter } from "./adapters/claude-code";
+import { Adapter } from "./adapters/types";
 
-const USAGE = `Usage: azure-arch-skill <subcommand> [options]
-
-Subcommands:
-  install      Install the Azure architecture skill into an AI agent's skill folder.
-  uninstall    Remove a previously installed skill.
-  update       Update an installed skill to the latest version.
-  list         List installed skills and their versions.
-
-Examples:
-  azure-arch-skill install --agent=claude-code
-  azure-arch-skill list
-`;
-
-function wantsHelp(argv: string[]): boolean {
-  return argv.includes("-h") || argv.includes("--help") || argv.includes("help");
-}
-
-async function stub(name: string, argv: string[]): Promise<number> {
-  if (wantsHelp(argv)) { process.stdout.write(USAGE); return 0; }
-  process.stderr.write(`[stub] ${name}: not yet implemented.\n`);
-  return 0;
-}
-
-async function install(argv: string[]):   Promise<number> { return stub("install", argv); }
-async function uninstall(argv: string[]): Promise<number> { return stub("uninstall", argv); }
-async function update(argv: string[]):    Promise<number> { return stub("update", argv); }
-async function list(argv: string[]):      Promise<number> { return stub("list", argv); }
-
-async function main(argv: string[]): Promise<number> {
-  const [, , subcommand, ...rest] = argv;
-
-  if (!subcommand) {
-    process.stdout.write(USAGE);
-    return 0;
-  }
-
-  switch (subcommand) {
-    case "install":   return install(rest);
-    case "uninstall": return uninstall(rest);
-    case "update":    return update(rest);
-    case "list":      return list(rest);
-    case "help":
-    case "-h":
-    case "--help":    process.stdout.write(USAGE); return 0;
-    case "version":
-    case "-V":
-    case "--version": process.stdout.write(pkg.version + "\n"); return 0;
+function pickAdapter(agent: string): Adapter {
+  switch (agent) {
+    case "claude-code": return claudeCodeAdapter;
     default:
-      process.stderr.write(`Unknown subcommand: ${subcommand}\n\n${USAGE}`);
-      return 1;
+      throw new Error(`unknown agent: ${agent} (supported: claude-code)`);
   }
 }
 
-main(process.argv)
-  .then(code => process.exit(code))
-  .catch(err => {
-    process.stderr.write(`fatal: ${err instanceof Error ? err.message : String(err)}\n`);
-    process.exit(1);
+const program = new Command()
+  .name("azure-arch-skill")
+  .description("Install the Azure architecture diagram skill into your AI coding agent.")
+  .version(pkg.version, "-V, --version");
+
+program
+  .command("install")
+  .description("Install the skill into an AI agent's skill folder.")
+  .requiredOption("--agent <name>", "target AI agent (claude-code)")
+  .option("--target <dir>", "override target directory (validation use)")
+  .action(async (opts) => {
+    const code = await pickAdapter(opts.agent).install({ target: opts.target });
+    process.exit(code);
   });
+
+program
+  .command("uninstall")
+  .description("Remove a previously installed skill.")
+  .requiredOption("--agent <name>", "target AI agent (claude-code)")
+  .option("--target <dir>", "override target directory (validation use)")
+  .action(async (opts) => {
+    const code = await pickAdapter(opts.agent).uninstall({ target: opts.target });
+    process.exit(code);
+  });
+
+program
+  .command("update")
+  .description("Update an installed skill to the latest version.")
+  .requiredOption("--agent <name>", "target AI agent (claude-code)")
+  .option("--target <dir>", "override target directory (validation use)")
+  .action(async (opts) => {
+    const code = await pickAdapter(opts.agent).update({ target: opts.target });
+    process.exit(code);
+  });
+
+program
+  .command("list")
+  .description("List installed skills and their versions.")
+  .requiredOption("--agent <name>", "target AI agent (claude-code)")
+  .option("--target <dir>", "override skills root directory (validation use)")
+  .action(async (opts) => {
+    const code = await pickAdapter(opts.agent).list({ target: opts.target });
+    process.exit(code);
+  });
+
+program.parseAsync(process.argv).catch(err => {
+  process.stderr.write(`fatal: ${err instanceof Error ? err.message : String(err)}\n`);
+  process.exit(1);
+});
