@@ -182,7 +182,7 @@ async function isOurSkillDir(dir: string): Promise<boolean> {
   }
 }
 
-async function withFatalReturn<T>(fn: () => Promise<T>): Promise<T | number> {
+async function withFatalReturn(fn: () => Promise<number>): Promise<number> {
   try {
     return await fn();
   } catch (err) {
@@ -192,32 +192,47 @@ async function withFatalReturn<T>(fn: () => Promise<T>): Promise<T | number> {
 }
 
 async function install(opts: InstallOptions): Promise<number> {
-  const result = await withFatalReturn(async () => {
+  return withFatalReturn(async () => {
     const target = await safeResolveTarget(opts.target ?? defaultTarget());
     const base = baseUrl();
 
-    // Refuse to overwrite an existing skill unless the caller passed overwrite (update does).
-    const existing = await fs.stat(path.join(target, "SKILL.md")).then(() => true).catch(() => false);
-    if (existing && !opts.overwrite) {
-      process.stderr.write(`fatal: ${target}/SKILL.md already exists. Run 'azure-arch-skill update --agent=claude-code' to refresh.\n`);
-      return 1;
+    // Strict install path: target must end with the canonical skill folder name
+    // unless the caller has opted into a wider AZURE_ARCH_SKILL_TARGET_ROOT.
+    if (!process.env.AZURE_ARCH_SKILL_TARGET_ROOT && path.basename(target) !== SKILL_NAME) {
+      throw new Error(`refusing to install at ${target} - target basename must be '${SKILL_NAME}' (default ~/.claude/skills/${SKILL_NAME}/). Set AZURE_ARCH_SKILL_TARGET_ROOT to install into a custom test root.`);
+    }
+
+    // Detect partial vs complete prior installs across BUNDLE_FILES.
+    const presence = await Promise.all(
+      BUNDLE_FILES.map(async ({ dest }) => ({
+        dest,
+        exists: await fs.stat(path.join(target, dest)).then(() => true).catch(() => false),
+      })),
+    );
+    const someExist = presence.some(p => p.exists);
+    const allExist = presence.every(p => p.exists);
+    if (someExist && !opts.overwrite) {
+      throw new Error(allExist
+        ? `${target} already contains an install. Run 'azure-arch-skill update --agent=claude-code' to refresh.`
+        : `${target} contains a partial install (${presence.filter(p => !p.exists).map(p => p.dest).join(", ")} missing). Run 'azure-arch-skill update --agent=claude-code' to repair.`);
     }
 
     const skillUrl = `${base}/${BUNDLE_FILES[0].src}`;
     const skillMd = await fetchText(skillUrl);
     const fm = parseFrontmatter(skillMd);
     if (!fm.requires_icons) {
-      process.stderr.write("fatal: SKILL.md missing requires_icons frontmatter\n");
-      return 1;
+      throw new Error("SKILL.md missing requires_icons frontmatter");
     }
     const canaryUrl = `${base}/${CANARY_ICON_PATH}`;
     const reachable = await headOk(canaryUrl);
     if (!reachable) {
-      process.stderr.write(`fatal: icon-set unreachable - HEAD ${canaryUrl} failed (skill declares requires_icons=${fm.requires_icons}; this release verifies reachability only, strict semver match planned)\n`);
-      return 1;
+      throw new Error(`icon-set unreachable - HEAD ${canaryUrl} failed (skill declares requires_icons=${fm.requires_icons}; this release verifies reachability only, strict semver match planned)`);
     }
 
-    await fs.mkdir(path.join(target, "examples"), { recursive: true });
+    // Mkdir the parent of every bundle dest so future deeper-nested entries work.
+    for (const { dest } of BUNDLE_FILES) {
+      await fs.mkdir(path.dirname(path.join(target, dest)), { recursive: true });
+    }
     await fs.writeFile(path.join(target, BUNDLE_FILES[0].dest), skillMd, "utf8");
     for (const { src, dest } of BUNDLE_FILES.slice(1)) {
       const body = await fetchText(`${base}/${src}`);
@@ -227,11 +242,10 @@ async function install(opts: InstallOptions): Promise<number> {
     process.stdout.write(`installed ${SKILL_NAME} to ${target}\n`);
     return 0;
   });
-  return typeof result === "number" ? result : 0;
 }
 
 async function uninstall(opts: UninstallOptions): Promise<number> {
-  const result = await withFatalReturn(async () => {
+  return withFatalReturn(async () => {
     const target = await safeResolveTarget(opts.target ?? defaultTarget());
 
     const exists = await fs.stat(target).then(() => true).catch(() => false);
@@ -242,15 +256,22 @@ async function uninstall(opts: UninstallOptions): Promise<number> {
 
     const ours = await isOurSkillDir(target);
     if (!ours) {
-      process.stderr.write(`fatal: refusing to remove ${target} - not an azure-architecture-diagram skill folder (no matching SKILL.md). Move/rename the directory or remove it manually if intentional.\n`);
-      return 1;
+      throw new Error(`refusing to remove ${target} - not an azure-architecture-diagram skill folder (no matching SKILL.md). Move/rename the directory or remove it manually if intentional.`);
     }
 
-    await fs.rm(target, { recursive: true, force: false });
+    try {
+      await fs.rm(target, { recursive: true, force: false });
+    } catch (err) {
+      const stillExists = await fs.stat(target).then(() => true).catch(() => false);
+      if (stillExists) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`uninstall partially failed at ${target}: ${msg}; manual cleanup may be required`);
+      }
+      throw err;
+    }
     process.stdout.write(`uninstalled ${SKILL_NAME} from ${target}\n`);
     return 0;
   });
-  return typeof result === "number" ? result : 0;
 }
 
 async function update(opts: UpdateOptions): Promise<number> {
@@ -258,7 +279,7 @@ async function update(opts: UpdateOptions): Promise<number> {
 }
 
 async function list(opts: ListOptions): Promise<number> {
-  const result = await withFatalReturn(async () => {
+  return withFatalReturn(async () => {
     const root = await safeResolveTarget(opts.target ?? defaultSkillsRoot());
 
     const exists = await fs.stat(root).then(() => true).catch(() => false);
@@ -282,7 +303,6 @@ async function list(opts: ListOptions): Promise<number> {
     process.stdout.write(rows.length ? rows.join("\n") + "\n" : "(no skills installed)\n");
     return 0;
   });
-  return typeof result === "number" ? result : 0;
 }
 
 export const claudeCodeAdapter: Adapter = { install, uninstall, update, list };

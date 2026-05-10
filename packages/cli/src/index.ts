@@ -5,17 +5,18 @@ import pkg from "../package.json";
 import { claudeCodeAdapter } from "./adapters/claude-code";
 import { Adapter } from "./adapters/types";
 
-const ADAPTERS: Record<string, Adapter> = {
+const ADAPTERS = {
   "claude-code": claudeCodeAdapter,
-};
+} as const satisfies Record<string, Adapter>;
+
+type AgentName = keyof typeof ADAPTERS;
 const SUPPORTED_AGENTS = Object.keys(ADAPTERS);
 
 function pickAdapter(agent: string): Adapter {
-  const adapter = ADAPTERS[agent];
-  if (!adapter) {
+  if (!(agent in ADAPTERS)) {
     throw new Error(`unknown agent: ${agent} (supported: ${SUPPORTED_AGENTS.join(", ")})`);
   }
-  return adapter;
+  return ADAPTERS[agent as AgentName];
 }
 
 const program = new Command()
