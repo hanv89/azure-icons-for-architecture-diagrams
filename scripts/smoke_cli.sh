@@ -67,12 +67,16 @@ npm run build --silent || { echo "FAIL  npm run build"; exit 1; }
 echo "PASS  build"
 
 # Step 3 — exit-code contracts.
-assert_exit "list   exits 0"            0 node dist/index.js list
-assert_exit "no-arg exits 0 (USAGE)"    0 node dist/index.js
-assert_exit "bogus  exits 1"            1 node dist/index.js bogus
-assert_exit "--help exits 0"            0 node dist/index.js --help
-assert_exit "version prints exits 0"    0 node dist/index.js --version
-assert_exit "install --help exits 0"    0 node dist/index.js install --help
+# `list --agent=claude-code` against an empty/missing skills root exits 0
+# (prints '(no skills installed)') because commander has no global default
+# action; per commander convention, no-subcommand exits 1 with help.
+assert_exit "list --agent=claude-code exits 0"   0 node dist/index.js list --agent=claude-code --target=/tmp/azure-arch-smoke-empty-skills-root
+assert_exit "no-arg exits 1 (commander)"          1 node dist/index.js
+assert_exit "bogus  exits 1"                       1 node dist/index.js bogus
+assert_exit "unknown agent exits 1"                1 node dist/index.js install --agent=bogus
+assert_exit "--help exits 0"                       0 node dist/index.js --help
+assert_exit "version prints exits 0"               0 node dist/index.js --version
+assert_exit "install --help exits 0"               0 node dist/index.js install --help
 
 echo
 echo "Summary: ${PASSED} passed, ${FAILED} failed."
