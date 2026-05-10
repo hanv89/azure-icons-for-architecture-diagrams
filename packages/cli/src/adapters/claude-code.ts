@@ -51,25 +51,61 @@ function defaultSkillsRoot(): string {
   return path.join(os.homedir(), ".claude", "skills");
 }
 
+let envTargetRootWarned = false;
+
 /**
- * Resolve `target` and assert it lives inside an allowed root. Prevents an
- * accidental or malicious `--target` from writing to / removing files outside
- * the user's skills tree (e.g. `--target=$HOME` or `--target=/etc`).
+ * Resolve `target` and assert it lives inside an allowed root. Resolution
+ * follows symlinks (via fs.realpath on the deepest existing ancestor) so
+ * a symlink inside an allowed root that points outside cannot bypass the
+ * check.
+ *
+ * The default allow-list is `~/.claude/` only. Setting the
+ * `AZURE_ARCH_SKILL_TARGET_ROOT` env var widens it to include that root
+ * (intended for validation/CI use against a `mktemp -d` directory).
+ * Production users should never set the env var.
  */
-function safeResolveTarget(target: string): string {
-  const resolved = path.resolve(target);
+async function safeResolveTarget(target: string): Promise<string> {
+  const lexicallyResolved = path.resolve(target);
+
+  // Walk up to the deepest existing ancestor and realpath it — install creates
+  // a not-yet-existing target so we can't realpath the leaf directly.
+  let probe = lexicallyResolved;
+  let realProbe: string | null = null;
+  while (true) {
+    try {
+      realProbe = await fs.realpath(probe);
+      break;
+    } catch (err: unknown) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code !== "ENOENT" && code !== "ENOTDIR") throw err;
+      const parent = path.dirname(probe);
+      if (parent === probe) {
+        throw new Error(`unable to resolve target ${target}`);
+      }
+      probe = parent;
+    }
+  }
+  const tail = lexicallyResolved.slice(probe.length);
+  const realResolved = path.resolve(realProbe + tail);
+
   const home = os.homedir();
   const explicit = process.env.AZURE_ARCH_SKILL_TARGET_ROOT;
+  if (explicit && !envTargetRootWarned) {
+    process.stderr.write(`warn: AZURE_ARCH_SKILL_TARGET_ROOT override active: ${explicit}\n`);
+    envTargetRootWarned = true;
+  }
+
   const allowedRoots = [
     path.resolve(path.join(home, ".claude")),
-    path.resolve(os.tmpdir()),
     explicit ? path.resolve(explicit) : null,
   ].filter((r): r is string => r !== null);
-  const inside = allowedRoots.some(root => resolved === root || resolved.startsWith(root + path.sep));
+
+  const inside = allowedRoots.some(root => realResolved === root || realResolved.startsWith(root + path.sep));
   if (!inside) {
-    throw new Error(`refusing to operate on ${resolved} — outside allowed roots (~/.claude, ${os.tmpdir()}${explicit ? `, $AZURE_ARCH_SKILL_TARGET_ROOT=${explicit}` : ""})`);
+    const allowList = `~/.claude${explicit ? `, $AZURE_ARCH_SKILL_TARGET_ROOT=${explicit}` : ""}`;
+    throw new Error(`refusing to operate on ${realResolved} (resolved from ${target}) - outside allowed roots (${allowList})`);
   }
-  return resolved;
+  return realResolved;
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
@@ -157,7 +193,7 @@ async function withFatalReturn<T>(fn: () => Promise<T>): Promise<T | number> {
 
 async function install(opts: InstallOptions): Promise<number> {
   const result = await withFatalReturn(async () => {
-    const target = safeResolveTarget(opts.target ?? defaultTarget());
+    const target = await safeResolveTarget(opts.target ?? defaultTarget());
     const base = baseUrl();
 
     // Refuse to overwrite an existing skill unless the caller passed overwrite (update does).
@@ -196,7 +232,7 @@ async function install(opts: InstallOptions): Promise<number> {
 
 async function uninstall(opts: UninstallOptions): Promise<number> {
   const result = await withFatalReturn(async () => {
-    const target = safeResolveTarget(opts.target ?? defaultTarget());
+    const target = await safeResolveTarget(opts.target ?? defaultTarget());
 
     const exists = await fs.stat(target).then(() => true).catch(() => false);
     if (!exists) {
@@ -223,7 +259,7 @@ async function update(opts: UpdateOptions): Promise<number> {
 
 async function list(opts: ListOptions): Promise<number> {
   const result = await withFatalReturn(async () => {
-    const root = safeResolveTarget(opts.target ?? defaultSkillsRoot());
+    const root = await safeResolveTarget(opts.target ?? defaultSkillsRoot());
 
     const exists = await fs.stat(root).then(() => true).catch(() => false);
     if (!exists) {

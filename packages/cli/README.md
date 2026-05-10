@@ -29,6 +29,13 @@ Planned (later releases): Codex CLI, Cursor.
 
 The icons themselves stay in this repository and are referenced from PlantUML via public `raw.githubusercontent.com` URLs — no additional download or hosting required.
 
+## Environment overrides
+
+Two environment variables exist for validation / CI use. Production users should not set them.
+
+- **`AZURE_ARCH_SKILL_BASE_URL`** — override the bundle source. Restricted to `https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/...` paths; any other host or scheme is rejected. The CLI emits `warn: AZURE_ARCH_SKILL_BASE_URL override active: <value>` to stderr whenever the override fires.
+- **`AZURE_ARCH_SKILL_TARGET_ROOT`** — widen the `--target` allow-list beyond the default `~/.claude/`. Setting this lets `install` / `uninstall` / `list` operate on directories outside the user's Claude config tree, so it MUST point at a directory you control (e.g. `mktemp -d` output in a test script). The CLI emits `warn: AZURE_ARCH_SKILL_TARGET_ROOT override active: <value>` once per command when honored. Never set this in a production shell — a stray `--target=$HOME` invocation against a widened allow-list could remove unrelated files.
+
 ## Repository
 
 See the [project README](https://github.com/hanv89/azure-icons-for-architecture-diagrams#readme) for icon source, licensing, and the full skill specification.
