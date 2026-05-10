@@ -8,11 +8,11 @@ CLI installer for the Azure architecture diagram skill. Drops the skill bundle (
 npx @hanv89/azure-arch-skill install --agent=claude-code
 ```
 
-Supported agents (full set planned):
+Supported agents:
 
 - Claude Code — `~/.claude/skills/azure-architecture-diagram/`
-- Codex CLI — *coming next*
-- Cursor — *coming next*
+
+Planned (later releases): Codex CLI, Cursor.
 
 ## Subcommands
 
