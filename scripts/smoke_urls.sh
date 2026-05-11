@@ -17,22 +17,41 @@
 set -uo pipefail
 export LC_ALL=C
 
-command -v curl >/dev/null 2>&1 || { echo "ERROR: curl not installed"; exit 2; }
+command -v curl >/dev/null 2>&1 || { echo "ERROR: curl not installed" >&2; exit 2; }
+command -v shuf >/dev/null 2>&1 || { echo "ERROR: shuf not installed (apt install coreutils)" >&2; exit 2; }
 
-BASE="https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# ---- D-013b: derive OWNER/REPO/BRANCH from git config; allow env override ----
+ORIGIN=$(git -C "$REPO_ROOT" config --get remote.origin.url 2>/dev/null || true)
+ORIGIN_NORMALIZED=${ORIGIN#git@github.com:}
+ORIGIN_NORMALIZED=${ORIGIN_NORMALIZED#https://github.com/}
+ORIGIN_NORMALIZED=${ORIGIN_NORMALIZED%.git}
+OWNER="${BASE_OWNER:-${ORIGIN_NORMALIZED%/*}}"
+REPO="${BASE_REPO:-${ORIGIN_NORMALIZED#*/}}"
+BRANCH="${BASE_BRANCH:-$(git -C "$REPO_ROOT" symbolic-ref --short HEAD 2>/dev/null || echo main)}"
+if [ -z "$OWNER" ] || [ -z "$REPO" ]; then
+  echo "ERROR: cannot derive OWNER/REPO from git config; set BASE_OWNER + BASE_REPO env" >&2
+  exit 2
+fi
+BASE="https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}"
 USER_AGENT="azure-icons-smoke/0.5"
+echo "smoke_urls.sh: probing ${OWNER}/${REPO}@${BRANCH}" >&2
 
-# Each entry: "URL|expected-content-type-prefix"
-#   - 3 plain PNGs from different categories
-#   - 1 monochrome variant with URL-encoded parentheses
-#   - 1 plain-text USAGE-RULES.txt
-URLS=(
-  "${BASE}/dist/Azure/Compute/AzureVirtualMachine.png|image/"
-  "${BASE}/dist/Azure/Storage/AzureStorage.png|image/"
-  "${BASE}/dist/Azure/Networking/AzureLoadBalancer.png|image/"
-  "${BASE}/dist/Azure/Compute/AzureVirtualMachine%28m%29.png|image/"
-  "${BASE}/dist/Azure/USAGE-RULES.txt|text/plain"
-)
+# ---- D-013c: per-category random sample (one colored PNG per category) ----
+# Skip monochrome '(m)' variants so the sample stays readable + URL-encoding-free.
+URLS=()
+for CAT in "$REPO_ROOT"/dist/Azure/*/; do
+  [ -d "$CAT" ] || continue
+  ICON=$(find "$CAT" -name '*.png' ! -name '*(m).png' 2>/dev/null | shuf -n 1)
+  if [ -n "$ICON" ]; then
+    REL_PATH=${ICON#"$REPO_ROOT"/}
+    URLS+=("${BASE}/${REL_PATH}|image/")
+  fi
+done
+# Always probe USAGE-RULES.txt as the non-PNG NOTICE-companion artifact.
+URLS+=("${BASE}/dist/Azure/USAGE-RULES.txt|text/plain")
+echo "smoke_urls.sh: sampling ${#URLS[@]} URLs (one per category + USAGE-RULES.txt)" >&2
 
 FAILED=0
 FMT='%-7s %-10s %-30s %s\n'
