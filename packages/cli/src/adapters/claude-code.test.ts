@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseFrontmatter } from "./claude-code";
+import { parseFrontmatter, fetchWithTimeout } from "./claude-code";
 
 test("parseFrontmatter: BOM-prefixed input parses correctly", () => {
   const md = "﻿---\nname: foo\nversion: 1.2.3\nrequires_icons: \">=0.1.0\"\n---\n# body";
@@ -46,4 +46,56 @@ test("parseFrontmatter: CRLF line endings supported", () => {
   const fm = parseFrontmatter(md);
   assert.equal(fm.name, "foo");
   assert.equal(fm.requires_icons, ">=0.1.0");
+});
+
+// ---- fetchWithTimeout retry path (R30, Phase 1.0) ----
+// Mock `globalThis.fetch` per-test; restore after. Tests use the function's
+// real exponential backoff (max ~1.5s wall-clock for the exhaustion case).
+
+const realFetch = globalThis.fetch;
+
+test("fetchWithTimeout: returns response on first attempt when upstream returns 200", async () => {
+  const calls: string[] = [];
+  globalThis.fetch = (async (url: any) => {
+    calls.push(url.toString());
+    return new Response("OK", { status: 200 });
+  }) as typeof fetch;
+  try {
+    const res = await fetchWithTimeout("https://example.com/x");
+    assert.equal(res.status, 200);
+    assert.equal(await res.text(), "OK");
+    assert.equal(calls.length, 1);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("fetchWithTimeout: retries once on 503 then succeeds on 200", async () => {
+  let attempt = 0;
+  globalThis.fetch = (async () => {
+    attempt++;
+    return new Response("", { status: attempt === 1 ? 503 : 200 });
+  }) as typeof fetch;
+  try {
+    const res = await fetchWithTimeout("https://example.com/y", {}, 2);
+    assert.equal(res.status, 200);
+    assert.equal(attempt, 2);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("fetchWithTimeout: returns the final 5xx response after exhausting retries", async () => {
+  let attempt = 0;
+  globalThis.fetch = (async () => {
+    attempt++;
+    return new Response("", { status: 503 });
+  }) as typeof fetch;
+  try {
+    const res = await fetchWithTimeout("https://example.com/z", {}, 2);
+    assert.equal(res.status, 503);
+    assert.equal(attempt, 3); // initial attempt + 2 retries
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });

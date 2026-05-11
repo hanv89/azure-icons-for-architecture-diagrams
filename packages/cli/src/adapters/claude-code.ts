@@ -113,18 +113,49 @@ async function safeResolveTarget(target: string): Promise<string> {
   return realResolved;
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-  try {
-    return await fetch(url, {
-      ...init,
-      signal: ctrl.signal,
-      headers: { ...(init.headers || {}), "User-Agent": USER_AGENT },
-    });
-  } finally {
-    clearTimeout(t);
+/**
+ * Fetch with timeout and 2-retry exponential backoff on transient 5xx
+ * responses. Used by `fetchText` and `headOk`; both inherit the retry
+ * behavior. Default `retries = 2` matches the R30 fix (Phase 1.0) —
+ * future agent adapters reusing this helper get the retry path for free.
+ *
+ * Backoff schedule: 500ms after attempt 0, 1s after attempt 1, 2s after
+ * attempt 2. Network errors (AbortError, DNS failures) re-throw only
+ * after the final attempt.
+ *
+ * @internal — exported only so unit tests can mock `globalThis.fetch`
+ *             around it. Not part of the public adapter API.
+ */
+export async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  retries = 2,
+): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, {
+        ...init,
+        signal: ctrl.signal,
+        headers: { ...(init.headers || {}), "User-Agent": USER_AGENT },
+      });
+      if (res.status < 500 || attempt === retries) {
+        return res;
+      }
+      // 5xx with retries remaining: fall through to backoff.
+    } catch (e) {
+      lastError = e;
+      if (attempt === retries) throw e;
+    } finally {
+      clearTimeout(t);
+    }
+    // Exponential backoff: 500ms, 1s, 2s.
+    await new Promise((r) => setTimeout(r, 2 ** attempt * 500));
   }
+  // Unreachable: the loop body always returns or throws on the final attempt.
+  throw lastError ?? new Error("fetchWithTimeout: exhausted retries");
 }
 
 async function fetchText(url: string): Promise<string> {
