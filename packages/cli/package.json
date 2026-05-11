@@ -1,7 +1,6 @@
 {
   "name": "@hanv89/azure-arch-skill",
   "version": "0.0.0",
-  "private": true,
   "description": "Install the Azure architecture diagram skill into your AI coding agent (Claude Code, Codex CLI, Cursor).",
   "bin": {
     "azure-arch-skill": "dist/index.js"
@@ -10,7 +9,8 @@
   "files": [
     "dist",
     "!dist/**/*.test.*",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
@@ -24,7 +24,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hanv89/azure-icons-for-architecture-diagrams.git"
+    "url": "git+https://github.com/hanv89/azure-icons-for-architecture-diagrams.git",
+    "directory": "packages/cli"
   },
   "bugs": {
     "url": "https://github.com/hanv89/azure-icons-for-architecture-diagrams/issues"
