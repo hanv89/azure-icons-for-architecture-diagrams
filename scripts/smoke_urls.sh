@@ -35,10 +35,10 @@ if [ -z "$OWNER" ] || [ -z "$REPO" ]; then
   exit 2
 fi
 BASE="https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}"
-USER_AGENT="azure-icons-smoke/0.5"
+USER_AGENT="azure-icons-smoke/0.6"
 echo "smoke_urls.sh: probing ${OWNER}/${REPO}@${BRANCH}" >&2
 
-# ---- D-013c: per-category random sample (one colored PNG per category) ----
+# ---- D-013c: per-category random sample (one colored PNG per Azure category) ----
 # Skip monochrome '(m)' variants so the sample stays readable + URL-encoding-free.
 URLS=()
 for CAT in "$REPO_ROOT"/dist/Azure/*/; do
@@ -49,9 +49,20 @@ for CAT in "$REPO_ROOT"/dist/Azure/*/; do
     URLS+=("${BASE}/${REL_PATH}|image/")
   fi
 done
-# Always probe USAGE-RULES.txt as the non-PNG NOTICE-companion artifact.
+# Fabric: flat icon set (no per-category subdirs), sample 5 random *_40_item.png.
+FABRIC_DIR="$REPO_ROOT/dist/Fabric/png"
+if [ -d "$FABRIC_DIR" ]; then
+  while IFS= read -r ICON; do
+    REL_PATH=${ICON#"$REPO_ROOT"/}
+    URLS+=("${BASE}/${REL_PATH}|image/")
+  done < <(find "$FABRIC_DIR" -name '*_40_item.png' 2>/dev/null | shuf -n 5)
+fi
+# Always probe USAGE-RULES.txt for each icon family (NOTICE-companion artifact).
 URLS+=("${BASE}/dist/Azure/USAGE-RULES.txt|text/plain")
-echo "smoke_urls.sh: sampling ${#URLS[@]} URLs (one per category + USAGE-RULES.txt)" >&2
+if [ -f "$REPO_ROOT/dist/Fabric/USAGE-RULES.txt" ]; then
+  URLS+=("${BASE}/dist/Fabric/USAGE-RULES.txt|text/plain")
+fi
+echo "smoke_urls.sh: sampling ${#URLS[@]} URLs (Azure per-category + Fabric sample + USAGE-RULES.txt)" >&2
 
 FAILED=0
 FMT='%-7s %-10s %-30s %s\n'
