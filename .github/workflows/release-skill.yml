@@ -1,0 +1,68 @@
+name: release-skill
+
+# Triggered by 'skill-v*' tag pushes. Detects rc tags (skill-v*-rc.*) and
+# publishes them under the npm 'next' dist-tag; non-rc tags publish under
+# 'latest'. Each publish uses 'npm publish --provenance' so the resulting
+# tarball ships a Sigstore-signed attestation tracing back to this commit
+# + this workflow run.
+#
+# Authority to publish comes from the npm Trusted Publisher entry that
+# links @hanv89/azure-arch-skill to this exact workflow file path. No
+# long-lived NPM_TOKEN secret is stored on the repo; the 'id-token: write'
+# permission lets GitHub mint a short-lived OIDC token that npm verifies
+# against its Trusted Publisher record.
+
+on:
+  push:
+    tags:
+      - 'skill-v*'
+
+permissions:
+  contents: write   # gh release create
+  id-token: write   # OIDC for npm Trusted Publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/cli
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Setup Node 20
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org/'
+
+      - name: Install + build + pack
+        run: |
+          npm ci
+          npm run build
+          npm pack
+
+      - name: Detect npm dist-tag from git tag
+        id: dist
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" == *-rc.* ]]; then
+            echo "tag=next" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: npm publish --provenance
+        run: |
+          npm publish --provenance --access public --tag "${{ steps.dist.outputs.tag }}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TARBALL=$(ls hanv89-azure-arch-skill-*.tgz | head -1)
+          VERSION="${GITHUB_REF_NAME#skill-v}"
+          gh release create "${GITHUB_REF_NAME}" "$TARBALL" \
+            --title "Azure arch skill v${VERSION}" \
+            --notes "Release v${VERSION} of @hanv89/azure-arch-skill. Published with Sigstore provenance attestation via Trusted Publisher OIDC."
