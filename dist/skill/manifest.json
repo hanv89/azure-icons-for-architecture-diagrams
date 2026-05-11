@@ -1,0 +1,11 @@
+{
+  "$schema": "./manifest.schema.json",
+  "name": "azure-architecture-diagram",
+  "version": "0.2.2",
+  "requires_icons": ">=0.2.2",
+  "files": [
+    { "src": "dist/skill/SKILL.md",                              "dest": "SKILL.md",                              "role": "skill" },
+    { "src": "dist/skill/examples/01-context.puml",              "dest": "examples/01-context.puml",              "role": "example" },
+    { "src": "dist/skill/examples/02-fabric-data-pipeline.puml", "dest": "examples/02-fabric-data-pipeline.puml", "role": "example" }
+  ]
+}

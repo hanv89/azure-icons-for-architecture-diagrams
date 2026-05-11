@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/skill/manifest.schema.json",
+  "title": "Azure architecture diagram skill bundle manifest",
+  "description": "Bundle file list + version metadata for the skill shipped to AI coding agents (Claude Code, Codex CLI, Cursor). Adapters fetch this file first and iterate `files` to install each entry.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "version", "requires_icons", "files"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Pointer to this schema for editor validation. Optional at runtime."
+    },
+    "name": {
+      "type": "string",
+      "description": "Skill name. MUST match the `name` field in SKILL.md frontmatter and the destination folder under ~/.claude/skills/."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$",
+      "description": "SemVer version of this skill bundle. MUST match SKILL.md frontmatter `version` and packages/cli/package.json `version`."
+    },
+    "requires_icons": {
+      "type": "string",
+      "description": "SemVer range of compatible icon-set releases (e.g. '>=0.2.2'). CLI verifies before install."
+    },
+    "files": {
+      "type": "array",
+      "description": "Bundle file list. Index 0 MUST be SKILL.md so the install-time frontmatter precheck has a stable target.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["src", "dest", "role"],
+        "properties": {
+          "src": {
+            "type": "string",
+            "description": "Path inside this repository (POSIX, relative to repo root). Used as the GitHub raw URL suffix."
+          },
+          "dest": {
+            "type": "string",
+            "description": "Path inside the destination skill folder under ~/.claude/skills/<name>/. POSIX."
+          },
+          "role": {
+            "type": "string",
+            "enum": ["skill", "example"],
+            "description": "`skill` for the top-level SKILL.md. `example` for entries under examples/. Adapters MAY treat roles differently."
+          }
+        }
+      }
+    }
+  }
+}

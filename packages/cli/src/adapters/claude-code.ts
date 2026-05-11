@@ -12,14 +12,22 @@ const DEFAULT_BASE_RAW_URL = "https://raw.githubusercontent.com/hanv89/azure-ico
 // (uninstall's allow-list refuses folders whose SKILL.md `name` differs).
 const SKILL_NAME = "azure-architecture-diagram";
 
-interface BundleFile { src: string; dest: string; }
-// Hard-coded bundle list. Keep SKILL.md as index 0 — install() relies on
-// BUNDLE_FILES[0] for the frontmatter-parsing precheck.
-const BUNDLE_FILES: BundleFile[] = [
-  { src: "dist/skill/SKILL.md",                          dest: "SKILL.md" },
-  { src: "dist/skill/examples/01-context.puml",          dest: "examples/01-context.puml" },
-  { src: "dist/skill/examples/02-fabric-data-pipeline.puml", dest: "examples/02-fabric-data-pipeline.puml" },
-];
+interface ManifestFile {
+  src: string;
+  dest: string;
+  role: "skill" | "example";
+}
+
+interface Manifest {
+  name: string;
+  version: string;
+  requires_icons: string;
+  files: ManifestFile[];
+}
+
+// Fetched at install/update time from dist/skill/manifest.json. files[0] MUST
+// be SKILL.md so the frontmatter precheck has a stable target.
+const MANIFEST_PATH = "dist/skill/manifest.json";
 
 const CANARY_ICON_PATH = "dist/Azure/Compute/AzureVirtualMachine.png";
 
@@ -172,6 +180,48 @@ async function headOk(url: string): Promise<boolean> {
   return res.ok;
 }
 
+/**
+ * Fetch + parse the bundle manifest. Validates required fields and the
+ * SKILL.md-at-index-0 invariant. Throws with a clear error on any issue —
+ * callers should not silently fall back.
+ */
+async function fetchManifest(base: string): Promise<Manifest> {
+  const url = `${base}/${MANIFEST_PATH}`;
+  const body = await fetchText(url);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch (err) {
+    throw new Error(`manifest ${url} is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error(`manifest ${url} did not parse to an object`);
+  }
+  const m = parsed as Partial<Manifest>;
+  for (const key of ["name", "version", "requires_icons"] as const) {
+    if (typeof m[key] !== "string" || !m[key]) {
+      throw new Error(`manifest ${url} missing required field: ${key}`);
+    }
+  }
+  if (!Array.isArray(m.files) || m.files.length === 0) {
+    throw new Error(`manifest ${url} files[] missing or empty`);
+  }
+  for (const [i, f] of m.files.entries()) {
+    if (!f || typeof f !== "object") {
+      throw new Error(`manifest ${url} files[${i}] not an object`);
+    }
+    for (const key of ["src", "dest", "role"] as const) {
+      if (typeof (f as Partial<ManifestFile>)[key] !== "string") {
+        throw new Error(`manifest ${url} files[${i}].${key} missing`);
+      }
+    }
+  }
+  if (m.files[0].dest !== "SKILL.md" || m.files[0].role !== "skill") {
+    throw new Error(`manifest ${url} files[0] must be SKILL.md (role=skill); got dest=${m.files[0].dest} role=${m.files[0].role}`);
+  }
+  return m as Manifest;
+}
+
 interface Frontmatter {
   name?: string;
   version?: string;
@@ -246,9 +296,15 @@ async function install(opts: InstallOptions): Promise<number> {
       throw new Error(`refusing to install at ${target} - target basename must be '${SKILL_NAME}' (default ~/.claude/skills/${SKILL_NAME}/). Set AZURE_ARCH_SKILL_TARGET_ROOT to install into a custom test root.`);
     }
 
-    // Detect partial vs complete prior installs across BUNDLE_FILES.
+    // Fetch the bundle manifest FIRST. Anything downstream relies on it.
+    const manifest = await fetchManifest(base);
+    if (manifest.name !== SKILL_NAME) {
+      throw new Error(`manifest name mismatch: expected '${SKILL_NAME}', got '${manifest.name}'. CLI and bundle are out of sync.`);
+    }
+
+    // Detect partial vs complete prior installs across manifest.files.
     const presence = await Promise.all(
-      BUNDLE_FILES.map(async ({ dest }) => ({
+      manifest.files.map(async ({ dest }) => ({
         dest,
         exists: await fs.stat(path.join(target, dest)).then(() => true).catch(() => false),
       })),
@@ -261,7 +317,7 @@ async function install(opts: InstallOptions): Promise<number> {
         : `${target} contains a partial install (${presence.filter(p => !p.exists).map(p => p.dest).join(", ")} missing). Run 'azure-arch-skill update --agent=claude-code' to repair.`);
     }
 
-    const skillUrl = `${base}/${BUNDLE_FILES[0].src}`;
+    const skillUrl = `${base}/${manifest.files[0].src}`;
     const skillMd = await fetchText(skillUrl);
     const fm = parseFrontmatter(skillMd);
     if (!fm.requires_icons) {
@@ -274,11 +330,11 @@ async function install(opts: InstallOptions): Promise<number> {
     }
 
     // Mkdir the parent of every bundle dest so future deeper-nested entries work.
-    for (const { dest } of BUNDLE_FILES) {
+    for (const { dest } of manifest.files) {
       await fs.mkdir(path.dirname(path.join(target, dest)), { recursive: true });
     }
-    await fs.writeFile(path.join(target, BUNDLE_FILES[0].dest), skillMd, "utf8");
-    for (const { src, dest } of BUNDLE_FILES.slice(1)) {
+    await fs.writeFile(path.join(target, manifest.files[0].dest), skillMd, "utf8");
+    for (const { src, dest } of manifest.files.slice(1)) {
       const body = await fetchText(`${base}/${src}`);
       await fs.writeFile(path.join(target, dest), body, "utf8");
     }
