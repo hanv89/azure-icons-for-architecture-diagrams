@@ -13,9 +13,12 @@ const DEFAULT_BASE_RAW_URL = "https://raw.githubusercontent.com/hanv89/azure-ico
 const SKILL_NAME = "azure-architecture-diagram";
 
 interface BundleFile { src: string; dest: string; }
+// Hard-coded bundle list. Keep SKILL.md as index 0 — install() relies on
+// BUNDLE_FILES[0] for the frontmatter-parsing precheck.
 const BUNDLE_FILES: BundleFile[] = [
-  { src: "dist/skill/SKILL.md",                 dest: "SKILL.md" },
-  { src: "dist/skill/examples/01-context.puml", dest: "examples/01-context.puml" },
+  { src: "dist/skill/SKILL.md",                          dest: "SKILL.md" },
+  { src: "dist/skill/examples/01-context.puml",          dest: "examples/01-context.puml" },
+  { src: "dist/skill/examples/02-fabric-data-pipeline.puml", dest: "examples/02-fabric-data-pipeline.puml" },
 ];
 
 const CANARY_ICON_PATH = "dist/Azure/Compute/AzureVirtualMachine.png";
