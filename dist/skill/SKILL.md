@@ -179,12 +179,36 @@ skinparam rectangle {
   BorderColor transparent
 }
 
-skinparam rectangle<<edge>>  { BackgroundColor #FFF7ED; BorderColor #EA580C; FontColor #9A3412 }
-skinparam rectangle<<vnet>>  { BackgroundColor #F0F7FF; BorderColor #0078D4; FontColor #075985 }
-skinparam rectangle<<spoke>> { BackgroundColor #F0FDF4; BorderColor #16A34A; FontColor #166534 }
-skinparam rectangle<<aks>>   { BackgroundColor #FAFAF9; BorderColor #84CC16; FontColor #365314 }
-skinparam rectangle<<data>>  { BackgroundColor #FAFAF9; BorderColor #94A3B8; FontColor #475569 }
-skinparam rectangle<<ai>>    { BackgroundColor #FAF5FF; BorderColor #7E22CE; FontColor #6B21A8 }
+skinparam rectangle<<edge>> {
+  BackgroundColor #FFF7ED
+  BorderColor #EA580C
+  FontColor #9A3412
+}
+skinparam rectangle<<vnet>> {
+  BackgroundColor #F0F7FF
+  BorderColor #0078D4
+  FontColor #075985
+}
+skinparam rectangle<<spoke>> {
+  BackgroundColor #F0FDF4
+  BorderColor #16A34A
+  FontColor #166534
+}
+skinparam rectangle<<aks>> {
+  BackgroundColor #FAFAF9
+  BorderColor #84CC16
+  FontColor #365314
+}
+skinparam rectangle<<data>> {
+  BackgroundColor #FAFAF9
+  BorderColor #94A3B8
+  FontColor #475569
+}
+skinparam rectangle<<ai>> {
+  BackgroundColor #FAF5FF
+  BorderColor #7E22CE
+  FontColor #6B21A8
+}
 
 title <size:20><b>[Project Name] — Production Architecture</b></size>\n<size:13>[Subtitle: stage, region, etc.]</size>\n
 
