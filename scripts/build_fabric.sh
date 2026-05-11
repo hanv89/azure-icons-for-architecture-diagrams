@@ -20,18 +20,30 @@
 #   (f) Structured 0/1/2 exit codes matching smoke_urls.sh / smoke_e2e.sh.
 #   (g) Scoped find -delete ('-name *.png -delete') preserves USAGE-RULES.txt.
 #
-# Scope filter (post-v0.2.0 widening): convert ALL size-40 Fabric service
-# icons from the 1598-SVG upstream package. Three patterns at size 40:
+# Scope (post-v0.2.1 widening):
+#
+# Pass 1 — per-artifact icons at size 40 ("_item" family, 65 icons):
 #   *_40_item.svg     — primary item icons (Lakehouse, Pipeline, Notebook, ...)
 #   *_40_non-item.svg — secondary forms (Folder, GroupWorkspace, MyWorkspace,
 #                       AddPipeline, ImportNotebook, Sample, EventHouse-alt)
 #   *_40.svg          — special-form services with no _item suffix
 #                       (graph_model, graph_queryset)
-# Plus mirrored_catalog: upstream has no size-40 variant at all, so we
-# downscale `mirrored_catalog_48_item.svg` to 40x40 via rsvg-convert.
-# Total: 65 icons at @fabric-msft/svg-icons@7.0.1.
-# The bulk of the 1598-SVG upstream (565 _regular + 564 _filled + smaller
-# sizes) is generic UI affordances, not Fabric services — out of scope.
+#   mirrored_catalog: downscaled from upstream _48_item to 40x40.
+#
+# Pass 2 — sizes 24, 28, 32, 48 across all suffix families (~247 icons added v0.2.2):
+#   *_{24,28,32,48}_item.svg
+#   *_{24,28,32,48}_non-item.svg
+#   *_{24,28,32,48}_color.svg
+#   *_{24,28,32,48}.svg                  (plain — graph_model, graph_queryset)
+#   Each PNG sized to match its filename (24/28/32/48). Upstream filenames
+#   preserved (e.g. fabric_48_color.svg -> fabric_48_color.png).
+#   Sample_workload skipped (only ships at _32_color, placeholder).
+#
+# Out of scope: 565 _regular + 564 _filled (generic UI affordances), smaller
+# _color sizes (16/20 — too small for architecture diagrams), size 64+
+# (Microsoft Fabric guidance reserves 64 for nav/dock use).
+#
+# Total: ~312 icons at @fabric-msft/svg-icons@7.0.1.
 
 set -euo pipefail
 export LC_ALL=C
@@ -87,21 +99,39 @@ echo "Installing ${NPM_PKG}@${FABRIC_VERSION} into ${SOURCE_DIR}..."
 SVG_DIR="${SOURCE_DIR}/node_modules/${NPM_PKG}/dist/svg"
 [ -d "${SVG_DIR}" ] || { echo "ERROR: expected SVG dir not found at ${SVG_DIR}" >&2; exit 2; }
 
-# ---- 2. Drop-threshold gate (items b + c) ----
+# ---- 2. Build the conversion list (Pass 1 + Pass 2) ----
 mkdir -p "${DIST_DIR}"
 OLD_COUNT="$(find "${DIST_DIR}" -name '*.png' 2>/dev/null | wc -l)"
-# Scope filter: all size-40 Fabric service icon variants + mirrored_catalog
-# (no size-40 upstream; downscale from 48).
-SVG_LIST=$(find "${SVG_DIR}" \
+
+# Pass 1 — per-artifact icons at size 40.
+PASS1_LIST=$(find "${SVG_DIR}" \
   \( -name '*_40_item.svg' -o -name '*_40_non-item.svg' -o -name '*_40.svg' \) \
   | sort)
 MIRRORED_SRC="${SVG_DIR}/mirrored_catalog_48_item.svg"
 if [ -f "${MIRRORED_SRC}" ]; then
-  SVG_LIST="${SVG_LIST}
+  PASS1_LIST="${PASS1_LIST}
 ${MIRRORED_SRC}"
 fi
-NEW_COUNT=$(echo "${SVG_LIST}" | grep -c '\.svg$' || true)
-echo "Counts: old=${OLD_COUNT} new=${NEW_COUNT}"
+PASS1_COUNT=$(echo "${PASS1_LIST}" | grep -c '\.svg$' || true)
+
+# Pass 2 — sizes 24/28/32/48 across all suffix families (_item, _non-item,
+# _color, plain). Each PNG sized to match its filename. Skip sample_workload
+# (placeholder).
+PASS2_LIST=$(find "${SVG_DIR}" \
+  \(    -name '*_24_item.svg'     -o -name '*_24_non-item.svg' \
+     -o -name '*_24_color.svg'    -o -name '*_24.svg' \
+     -o -name '*_28_item.svg'     -o -name '*_28_non-item.svg' \
+     -o -name '*_28_color.svg'    -o -name '*_28.svg' \
+     -o -name '*_32_item.svg'     -o -name '*_32_non-item.svg' \
+     -o -name '*_32_color.svg'    -o -name '*_32.svg' \
+     -o -name '*_48_item.svg'     -o -name '*_48_non-item.svg' \
+     -o -name '*_48_color.svg'    -o -name '*_48.svg' \) \
+  ! -name 'sample_workload_*' \
+  | sort)
+PASS2_COUNT=$(echo "${PASS2_LIST}" | grep -c '\.svg$' || true)
+
+NEW_COUNT=$(( PASS1_COUNT + PASS2_COUNT ))
+echo "Counts: old=${OLD_COUNT} new=${NEW_COUNT} (pass1=${PASS1_COUNT} pass2=${PASS2_COUNT})"
 
 if [ "${OLD_COUNT}" -gt 0 ]; then
   DROP=$(( OLD_COUNT - NEW_COUNT ))
@@ -117,14 +147,13 @@ fi
 echo "Cleaning ${DIST_DIR}/*.png..."
 find "${DIST_DIR}" -name '*.png' -delete
 
-# ---- 4. SVG -> PNG via rsvg-convert (40x40 to match `_40_item` size class) ----
-echo "Converting ${NEW_COUNT} SVGs to PNG..."
+# ---- 4a. Pass 1 — SVG -> PNG at 40x40 (item / non-item / plain _40) ----
+echo "Pass 1: converting ${PASS1_COUNT} per-artifact SVGs at 40x40..."
 CONVERTED=0
 while IFS= read -r SVG; do
   [ -n "${SVG}" ] || continue
   NAME=$(basename "${SVG}" .svg)
-  # Special case: mirrored_catalog upstream has no _40 size, downscale from 48.
-  # Rename output to _40_item so users find it under the standard naming.
+  # mirrored_catalog has no _40 size upstream — downscale from 48 and rename.
   if [ "${NAME}" = "mirrored_catalog_48_item" ]; then
     NAME="mirrored_catalog_40_item"
   fi
@@ -132,7 +161,22 @@ while IFS= read -r SVG; do
     echo "ERROR: rsvg-convert failed on ${SVG}" >&2; exit 1;
   }
   CONVERTED=$(( CONVERTED + 1 ))
-done <<< "${SVG_LIST}"
+done <<< "${PASS1_LIST}"
+
+# ---- 4b. Pass 2 — SVG -> PNG at native filename size (24/28/32/48 across all suffixes) ----
+echo "Pass 2: converting ${PASS2_COUNT} multi-size SVGs at native size..."
+while IFS= read -r SVG; do
+  [ -n "${SVG}" ] || continue
+  NAME=$(basename "${SVG}" .svg)
+  # SIZE extracted from filename (e.g. fabric_48_color -> 48, lakehouse_32_item -> 32,
+  # graph_model_24 -> 24). Match either trailing _N or _N_<suffix>.
+  SIZE=$(echo "${NAME}" | grep -oE '_(24|28|32|48)(_[a-z-]+)?$' | grep -oE '(24|28|32|48)' | head -1)
+  rsvg-convert -w "${SIZE}" -h "${SIZE}" -o "${DIST_DIR}/${NAME}.png" "${SVG}" || {
+    echo "ERROR: rsvg-convert failed on ${SVG}" >&2; exit 1;
+  }
+  CONVERTED=$(( CONVERTED + 1 ))
+done <<< "${PASS2_LIST}"
+
 echo "Converted: ${CONVERTED}"
 
 # ---- 5. Persist UPSTREAM-VERSION.txt (item e) ----
@@ -141,8 +185,8 @@ echo "${NPM_PKG}@${FABRIC_VERSION}" > "${REPO_ROOT}/dist/Fabric/UPSTREAM-VERSION
 # ---- 6. Verify ----
 COUNT="$(find "${DIST_DIR}" -name '*.png' | wc -l)"
 echo "PNG count: ${COUNT}"
-if [ "${COUNT}" -lt 30 ]; then
-  echo "ERROR: count < 30, aborting (expected ≥ 50 Fabric items)" >&2
+if [ "${COUNT}" -lt 250 ]; then
+  echo "ERROR: count < 250, aborting (expected ~312 Fabric icons across sizes 24/28/32/40/48)" >&2
   exit 1
 fi
 
