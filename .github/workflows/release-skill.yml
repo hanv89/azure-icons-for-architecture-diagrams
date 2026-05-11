@@ -35,7 +35,16 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org/'
+        # NOTE: do NOT set 'registry-url' here. setup-node injects a .npmrc
+        # with '_authToken=${NODE_AUTH_TOKEN}' which conflicts with npm's
+        # Trusted Publisher OIDC flow — the empty NODE_AUTH_TOKEN becomes
+        # the active auth source and npm rejects the publish with a 404
+        # PUT (auth error masquerading as not-found). With registry-url
+        # omitted, npm uses default registry config and the OIDC token
+        # flow takes over.
+
+      - name: Upgrade npm to latest (trusted publishing needs >= 11.5.1)
+        run: npm install -g npm@latest
 
       - name: Install + build + pack
         run: |
