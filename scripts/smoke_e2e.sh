@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # End-to-end smoke for the install path: Node-18 negative test (engines
 # floor) + icon-set-unreachable fixture test. Manual Claude Code
-# rendering is NOT exercised here — see the workspace evidence file
-# under notes/2026-05-10-phase-0.10-e2e-evidence/ for that.
+# rendering is NOT exercised here — those end-to-end checks are
+# recorded as attestation artifacts maintained upstream.
 #
 # Exit codes:
 #   0 — both tests passed (or Test A skipped due to no Docker).
