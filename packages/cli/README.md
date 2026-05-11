@@ -1,8 +1,8 @@
 # @hanv89/azure-arch-skill
 
-> **Status**: pre-publish. The package is not yet on npmjs.com — the `npx` command below works once the first release ships.
-
 CLI installer for the Azure architecture diagram skill. Drops the skill bundle (`SKILL.md` + worked PlantUML examples) into your AI coding agent's skill folder so that prompts like *"draw an Azure context diagram"* produce diagrams that use official Microsoft Azure architecture icons.
+
+Published with Sigstore provenance via npm Trusted Publishing — verify with `npm view @hanv89/azure-arch-skill@latest dist.attestations`.
 
 ## Requirements
 
