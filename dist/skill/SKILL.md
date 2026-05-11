@@ -1,8 +1,8 @@
 ---
 name: azure-architecture-diagram
-description: Use this skill when creating Microsoft Azure architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository, layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]".
-version: 0.1.0
-requires_icons: ">=0.1.0"
+description: Use this skill when creating Microsoft Azure or Microsoft Fabric architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram".
+version: 0.2.0
+requires_icons: ">=0.2.0"
 ---
 
 # Azure Architecture Diagram Skill (PlantUML)
@@ -150,6 +150,49 @@ PlantUML's preprocessor does not substitute `!define` symbols inside the `<img:>
 ```
 
 This rule was discovered while authoring `examples/01-context.puml` — the macro form silently produced broken images on `play.plantuml.com`; switching to literal URLs fixed it.
+
+## Microsoft Fabric icons
+
+This skill also covers Microsoft Fabric — the data engineering / analytics platform — using icons sourced from the `@fabric-msft/svg-icons` npm package (Microsoft first-party, MIT license). Fabric icons live at:
+
+```
+https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/<service>_40_item.png
+```
+
+All Fabric icons are 40×40 px (the upstream's "Item" size class). PlantUML scales them automatically inside `<img:>` tokens, so the smaller native size doesn't visually clash with Azure icons in the same diagram.
+
+### Common Fabric services reference
+
+| Service | Filename | Use case |
+|---|---|---|
+| Lakehouse | `lakehouse_40_item.png` | Storage layer for Bronze/Silver/Gold (Delta) |
+| Pipeline | `pipeline_40_item.png` | Data orchestration |
+| Notebook | `notebook_40_item.png` | Spark / Python transformation |
+| Data Warehouse | `data_warehouse_40_item.png` | Serving Gold via T-SQL |
+| Data Factory | `data_factory_40_item.png` | Parent ETL platform |
+| Dataflow Gen2 | `dataflow_gen2_40_item.png` | Power Query data flows |
+| Eventstream | `eventstream_40_item.png` | Real-time ingest |
+| Event House (KQL DB) | `event_house_40_item.png` | KQL-queried event store |
+| Semantic Model | `semantic_model_40_item.png` | Power BI / analytics semantic layer |
+| Report | `report_40_item.png` | Power BI report |
+
+55 Fabric items total ship at `icons-v0.2.0`. Browse the full set at: `https://github.com/hanv89/azure-icons-for-architecture-diagrams/tree/main/dist/Fabric/png`. See `dist/Fabric/USAGE-RULES.txt` for the Microsoft Fabric icon Don'ts (mirror of the Azure rules).
+
+### Example references
+
+```plantuml
+' Fabric data engineering icons (literal URLs, same convention as Azure)
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/lakehouse_40_item.png>
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/pipeline_40_item.png>
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/notebook_40_item.png>
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/data_warehouse_40_item.png>
+```
+
+The Fabric icon filenames use `snake_case` (matching upstream `@fabric-msft/svg-icons` SVG names); none contain parentheses, so no URL encoding is needed.
+
+### Mixing Azure + Fabric in one diagram
+
+Fabric icons compose cleanly with Azure icons. Typical pattern: Azure infra surrounding a Fabric data plane (e.g. Azure Front Door → Azure App Service → Fabric Lakehouse via Fabric Pipeline → Fabric Notebook → Fabric Data Warehouse → Power BI report). See `examples/02-fabric-data-pipeline.puml` for a worked Fabric-only flow; Azure+Fabric mixed examples will land in later phases.
 
 ## Pattern 1: System Architecture Diagram
 
