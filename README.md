@@ -8,14 +8,15 @@ This repository hosts 528 PNG icons across 22 Azure categories (`AIMachineLearni
 
 ## Use it
 
-The icons are reachable as raw URLs from this repository, so any PlantUML renderer (the public `plantuml.com` server, the Confluence app, the VS Code extension, GitHub's inline renderer) can fetch them at render time. The `IMG` macro below is just shorthand to keep diagrams readable:
+The icons are reachable as raw URLs from this repository, so any PlantUML renderer (the public `plantuml.com` server, the Confluence app, the VS Code extension, GitHub's inline renderer) can fetch them at render time. Use literal URLs inside `<img:>` tokens:
 
 ```plantuml
 @startuml
-!define IMG https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Azure
-<img:IMG/Compute/AzureVirtualMachine.png>
+rectangle "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Azure/Compute/AzureVirtualMachine.png>\n**Azure VM**" as vm
 @enduml
 ```
+
+> **Do not use PlantUML `!define` macros for icon URLs.** A pattern like `!define IMG https://...` followed by `<img:IMG/Compute/X.png>` does not expand inside the `<img:>` token and renders as a broken image on `play.plantuml.com` (verified during the v0.1.0 end-to-end demo). Paste the full URL.
 
 Browse [`dist/Azure/`](dist/Azure/) on GitHub to find the path for any specific icon. Filenames containing `(` or `)` (the monochrome variants) must be URL-encoded as `%28` / `%29` when used inside a `<img:URL>` reference.
 
