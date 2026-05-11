@@ -49,13 +49,16 @@ for CAT in "$REPO_ROOT"/dist/Azure/*/; do
     URLS+=("${BASE}/${REL_PATH}|image/")
   fi
 done
-# Fabric: flat icon set (no per-category subdirs), sample 5 random *_40_item.png.
+# Fabric: flat icon set (no per-category subdirs), sample 5 random size-40 PNGs
+# across all three upstream naming patterns (_40_item, _40_non-item, _40).
 FABRIC_DIR="$REPO_ROOT/dist/Fabric/png"
 if [ -d "$FABRIC_DIR" ]; then
   while IFS= read -r ICON; do
     REL_PATH=${ICON#"$REPO_ROOT"/}
     URLS+=("${BASE}/${REL_PATH}|image/")
-  done < <(find "$FABRIC_DIR" -name '*_40_item.png' 2>/dev/null | shuf -n 5)
+  done < <(find "$FABRIC_DIR" \
+             \( -name '*_40_item.png' -o -name '*_40_non-item.png' -o -name '*_40.png' \) \
+             2>/dev/null | shuf -n 5)
 fi
 # Always probe USAGE-RULES.txt for each icon family (NOTICE-companion artifact).
 URLS+=("${BASE}/dist/Azure/USAGE-RULES.txt|text/plain")
