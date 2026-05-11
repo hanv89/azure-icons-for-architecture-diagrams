@@ -1,8 +1,8 @@
 ---
 name: azure-architecture-diagram
 description: Use this skill when creating Microsoft Azure or Microsoft Fabric architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram".
-version: 0.2.0
-requires_icons: ">=0.2.0"
+version: 0.2.1
+requires_icons: ">=0.2.1"
 ---
 
 # Azure Architecture Diagram Skill (PlantUML)
@@ -156,10 +156,16 @@ This rule was discovered while authoring `examples/01-context.puml` — the macr
 This skill also covers Microsoft Fabric — the data engineering / analytics platform — using icons sourced from the `@fabric-msft/svg-icons` npm package (Microsoft first-party, MIT license). Fabric icons live at:
 
 ```
-https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/<service>_40_item.png
+https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/<service>_40_<suffix>.png
 ```
 
-All Fabric icons are 40×40 px (the upstream's "Item" size class). PlantUML scales them automatically inside `<img:>` tokens, so the smaller native size doesn't visually clash with Azure icons in the same diagram.
+Where `<suffix>` is one of three upstream naming conventions:
+
+- `_40_item` — primary service icons (Lakehouse, Pipeline, Notebook, etc.) — 56 icons.
+- `_40_non-item` — secondary forms: workspaces, folders, action verbs (MyWorkspace, GroupWorkspace, Folder, AddPipeline, ImportNotebook, Sample, EventHouse-alt) — 7 icons.
+- `_40` — special-form services with no item suffix (graph_model, graph_queryset) — 2 icons.
+
+65 icons total at `icons-v0.2.1`. All are 40×40 px; PlantUML scales them automatically inside `<img:>` tokens.
 
 ### Common Fabric services reference
 
@@ -175,8 +181,14 @@ All Fabric icons are 40×40 px (the upstream's "Item" size class). PlantUML scal
 | Event House (KQL DB) | `event_house_40_item.png` | KQL-queried event store |
 | Semantic Model | `semantic_model_40_item.png` | Power BI / analytics semantic layer |
 | Report | `report_40_item.png` | Power BI report |
+| Mirrored Catalog | `mirrored_catalog_40_item.png` | Mirrored external catalog (Unity, Snowflake, etc.) |
+| Graph Model | `graph_model_40.png` | Graph data model |
+| Graph Queryset | `graph_queryset_40.png` | Graph queryset |
+| My Workspace | `my_workspace_40_non-item.png` | Personal tenant workspace container |
+| Group Workspace | `group_workspace_40_non-item.png` | Shared workspace container |
+| Folder | `folder_40_non-item.png` | Workspace folder grouping |
 
-55 Fabric items total ship at `icons-v0.2.0`. Browse the full set at: `https://github.com/hanv89/azure-icons-for-architecture-diagrams/tree/main/dist/Fabric/png`. See `dist/Fabric/USAGE-RULES.txt` for the Microsoft Fabric icon Don'ts (mirror of the Azure rules).
+65 Fabric icons ship at `icons-v0.2.1` (10 added in v0.2.1 covering mirrored catalogs, graph services, workspace containers, and action verbs). Browse the full set at: `https://github.com/hanv89/azure-icons-for-architecture-diagrams/tree/main/dist/Fabric/png`. See `dist/Fabric/USAGE-RULES.txt` for the Microsoft Fabric icon Don'ts (mirror of the Azure rules).
 
 ### Example references
 
