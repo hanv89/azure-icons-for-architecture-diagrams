@@ -1,8 +1,8 @@
 ---
 name: azure-architecture-diagram
 description: Use this skill when creating Microsoft Azure or Microsoft Fabric architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram".
-version: 0.2.1
-requires_icons: ">=0.2.1"
+version: 0.2.2
+requires_icons: ">=0.2.2"
 ---
 
 # Azure Architecture Diagram Skill (PlantUML)
@@ -153,21 +153,31 @@ This rule was discovered while authoring `examples/01-context.puml` — the macr
 
 ## Microsoft Fabric icons
 
-This skill also covers Microsoft Fabric — the data engineering / analytics platform — using icons sourced from the `@fabric-msft/svg-icons` npm package (Microsoft first-party, MIT license). Fabric icons live at:
+This skill also covers Microsoft Fabric — the data engineering / analytics platform — using icons sourced from the `@fabric-msft/svg-icons` npm package (Microsoft first-party, MIT license). Fabric icons live under:
 
 ```
-https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/<service>_40_<suffix>.png
+https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/
 ```
 
-Where `<suffix>` is one of three upstream naming conventions:
+Two icon families, two abstraction levels:
 
-- `_40_item` — primary service icons (Lakehouse, Pipeline, Notebook, etc.) — 56 icons.
-- `_40_non-item` — secondary forms: workspaces, folders, action verbs (MyWorkspace, GroupWorkspace, Folder, AddPipeline, ImportNotebook, Sample, EventHouse-alt) — 7 icons.
-- `_40` — special-form services with no item suffix (graph_model, graph_queryset) — 2 icons.
+**Family A — per-artifact icons (`_item` / `_non-item` / plain).** Per-service icons that represent individual artifacts inside a Fabric workspace (Lakehouse, Pipeline, Notebook, KQL DB, ...). Available at sizes 24, 32, 40, 48 with three suffix conventions:
 
-65 icons total at `icons-v0.2.1`. All are 40×40 px; PlantUML scales them automatically inside `<img:>` tokens.
+- `<base>_<size>_item.png` — primary service items (most icons).
+- `<base>_<size>_non-item.png` — secondary forms: workspaces, folders, action verbs (MyWorkspace, GroupWorkspace, Folder, AddPipeline, ImportNotebook, Sample, EventHouse-alt).
+- `<base>_<size>.png` — special-form services with no item suffix (graph_model, graph_queryset).
 
-### Common Fabric services reference
+Pick `_40_item` for most architecture diagrams (default size — the v0.2.0 set). Use 24/32 for compact layouts; 48 for hero blocks.
+
+**Family B — per-experience workload icons (`_color`).** Color brand icons that represent Fabric experiences (the panes in the Fabric portal) — distinct from the per-artifact icons inside them. URL: `<workload>_<size>_color.png` where `<size>` ∈ {24, 28, 32, 48}.
+
+13 workload bases: `copilot`, `databases`, `data_engineering`, `data_factory`, `data_science`, `data_warehouse`, `fabric` (umbrella brand), `graph_intelligence`, `industry_solutions`, `one_lake`, `power_bi`, `purview`, `real_time_intelligence`.
+
+Use these for the **experience-level** layer in a Fabric architecture (the Data Engineering pane, the OneLake foundation, the Power BI consumption layer).
+
+Total: 312 Fabric icons at `icons-v0.2.2` (65 size-40 Family A + 247 size-24/28/32/48 Family A+B). PlantUML scales them automatically inside `<img:>` tokens.
+
+### Common Fabric items reference (Family A)
 
 | Service | Filename | Use case |
 |---|---|---|
@@ -188,7 +198,27 @@ Where `<suffix>` is one of three upstream naming conventions:
 | Group Workspace | `group_workspace_40_non-item.png` | Shared workspace container |
 | Folder | `folder_40_non-item.png` | Workspace folder grouping |
 
-65 Fabric icons ship at `icons-v0.2.1` (10 added in v0.2.1 covering mirrored catalogs, graph services, workspace containers, and action verbs). Browse the full set at: `https://github.com/hanv89/azure-icons-for-architecture-diagrams/tree/main/dist/Fabric/png`. See `dist/Fabric/USAGE-RULES.txt` for the Microsoft Fabric icon Don'ts (mirror of the Azure rules).
+### Common Fabric workloads reference (Family B, `_color`)
+
+| Workload | Filename (size 48) | Use case |
+|---|---|---|
+| Fabric (umbrella brand) | `fabric_48_color.png` | Tenant boundary / Fabric platform group |
+| OneLake | `one_lake_48_color.png` | Foundation lake storage layer |
+| Data Engineering | `data_engineering_48_color.png` | Spark + Lakehouse experience |
+| Data Factory | `data_factory_48_color.png` | Pipeline + Dataflow experience |
+| Data Warehouse | `data_warehouse_48_color.png` | SQL warehouse experience |
+| Data Science | `data_science_48_color.png` | ML experiment + model experience |
+| Real-Time Intelligence | `real_time_intelligence_48_color.png` | KQL DB + Eventstream experience |
+| Power BI | `power_bi_48_color.png` | Report + dashboard consumption layer |
+| Databases | `databases_48_color.png` | Fabric Databases (mirrored + SQL DB) |
+| Graph Intelligence | `graph_intelligence_48_color.png` | Graph model + queryset experience |
+| Industry Solutions | `industry_solutions_48_color.png` | Vertical-specific bundles (healthcare, retail, sustainability) |
+| Purview | `purview_48_color.png` | Governance + catalog |
+| Copilot | `copilot_48_color.png` | Generative AI overlay |
+
+Smaller workload sizes available: 24, 28, 32 — same naming pattern (`<base>_<size>_color.png`). Drop in for dense diagrams or sidebar legends.
+
+312 Fabric icons ship at `icons-v0.2.2`. Browse the full set at: `https://github.com/hanv89/azure-icons-for-architecture-diagrams/tree/main/dist/Fabric/png`. See `dist/Fabric/USAGE-RULES.txt` for the Microsoft Fabric icon Don'ts (mirror of the Azure rules).
 
 ### Example references
 
