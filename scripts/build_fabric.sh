@@ -20,12 +20,18 @@
 #   (f) Structured 0/1/2 exit codes matching smoke_urls.sh / smoke_e2e.sh.
 #   (g) Scoped find -delete ('-name *.png -delete') preserves USAGE-RULES.txt.
 #
-# Scope filter (Phase 1.1 spec Q1): convert only `*_40_item.svg` from the
-# 1598-SVG upstream package. That subset (55 icons at @fabric-msft/svg-icons@7.0.1)
-# is the Microsoft-branded Fabric items (Lakehouse, Pipeline, Notebook,
-# Warehouse, etc.) — the iconography people draw on architecture diagrams.
-# The other variants (`_non-item`, `_filled`, `_regular`, sizes 12/20/24/32/48/64)
-# are UI affordances + multi-size duplicates not useful in PlantUML <img:> use.
+# Scope filter (post-v0.2.0 widening): convert ALL size-40 Fabric service
+# icons from the 1598-SVG upstream package. Three patterns at size 40:
+#   *_40_item.svg     — primary item icons (Lakehouse, Pipeline, Notebook, ...)
+#   *_40_non-item.svg — secondary forms (Folder, GroupWorkspace, MyWorkspace,
+#                       AddPipeline, ImportNotebook, Sample, EventHouse-alt)
+#   *_40.svg          — special-form services with no _item suffix
+#                       (graph_model, graph_queryset)
+# Plus mirrored_catalog: upstream has no size-40 variant at all, so we
+# downscale `mirrored_catalog_48_item.svg` to 40x40 via rsvg-convert.
+# Total: 65 icons at @fabric-msft/svg-icons@7.0.1.
+# The bulk of the 1598-SVG upstream (565 _regular + 564 _filled + smaller
+# sizes) is generic UI affordances, not Fabric services — out of scope.
 
 set -euo pipefail
 export LC_ALL=C
@@ -84,8 +90,16 @@ SVG_DIR="${SOURCE_DIR}/node_modules/${NPM_PKG}/dist/svg"
 # ---- 2. Drop-threshold gate (items b + c) ----
 mkdir -p "${DIST_DIR}"
 OLD_COUNT="$(find "${DIST_DIR}" -name '*.png' 2>/dev/null | wc -l)"
-# Scope filter: only `*_40_item.svg` per Phase 1.1 spec Q1.
-SVG_LIST=$(find "${SVG_DIR}" -name '*_40_item.svg' | sort)
+# Scope filter: all size-40 Fabric service icon variants + mirrored_catalog
+# (no size-40 upstream; downscale from 48).
+SVG_LIST=$(find "${SVG_DIR}" \
+  \( -name '*_40_item.svg' -o -name '*_40_non-item.svg' -o -name '*_40.svg' \) \
+  | sort)
+MIRRORED_SRC="${SVG_DIR}/mirrored_catalog_48_item.svg"
+if [ -f "${MIRRORED_SRC}" ]; then
+  SVG_LIST="${SVG_LIST}
+${MIRRORED_SRC}"
+fi
 NEW_COUNT=$(echo "${SVG_LIST}" | grep -c '\.svg$' || true)
 echo "Counts: old=${OLD_COUNT} new=${NEW_COUNT}"
 
@@ -108,8 +122,12 @@ echo "Converting ${NEW_COUNT} SVGs to PNG..."
 CONVERTED=0
 while IFS= read -r SVG; do
   [ -n "${SVG}" ] || continue
-  # Output filename: e.g. lakehouse_40_item.png (upstream naming preserved)
   NAME=$(basename "${SVG}" .svg)
+  # Special case: mirrored_catalog upstream has no _40 size, downscale from 48.
+  # Rename output to _40_item so users find it under the standard naming.
+  if [ "${NAME}" = "mirrored_catalog_48_item" ]; then
+    NAME="mirrored_catalog_40_item"
+  fi
   rsvg-convert -w 40 -h 40 -o "${DIST_DIR}/${NAME}.png" "${SVG}" || {
     echo "ERROR: rsvg-convert failed on ${SVG}" >&2; exit 1;
   }
