@@ -175,6 +175,8 @@ Pick `_40_item` for most architecture diagrams (default size — the v0.2.0 set)
 
 Use these for the **experience-level** layer in a Fabric architecture (the Data Engineering pane, the OneLake foundation, the Power BI consumption layer).
 
+**Pair Family A + Family B on the same diagram**, do not collapse them. Each consumption / experience pane gets a Family B `_color` icon for the pane label; each individual artifact inside that pane gets a Family A `_item` icon. Example: a Power BI consumption block uses `power_bi_48_color.png` for the pane and `report_40_item.png` for the report artifact (two icons, two distinct concepts). Likewise OneLake uses `one_lake_48_color.png` for the foundation and `lakehouse_40_item.png` / `data_warehouse_40_item.png` for the storage items on top. Collapsing one into the other (e.g. using only `report_40_item.png` and labeling it "Power BI Report") loses the architectural distinction Microsoft draws in its reference architectures.
+
 Total: 312 Fabric icons at `icons-v0.2.2` (65 size-40 Family A + 247 size-24/28/32/48 Family A+B). PlantUML scales them automatically inside `<img:>` tokens.
 
 ### Common Fabric items reference (Family A)
