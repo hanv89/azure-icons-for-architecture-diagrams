@@ -52,6 +52,9 @@ jobs:
           npm run build
           npm pack
 
+      - name: Run tests before publish
+        run: npm test
+
       - name: Detect npm dist-tag from git tag
         id: dist
         run: |
