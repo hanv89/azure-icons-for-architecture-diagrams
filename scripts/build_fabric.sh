@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Reproducible Microsoft Fabric icon build (Variant B — @fabric-msft/svg-icons
-# npm upstream, Microsoft first-party MIT per D-021).
+# npm upstream, Microsoft first-party MIT).
 # Idempotent: safe to re-run.
 #
 # Exit codes:
@@ -8,7 +8,7 @@
 #   1 — build failure or refused content drop (use --allow-removals to override).
 #   2 — environment problem (rsvg-convert / npm / network missing, etc.).
 #
-# Phase 1.1 inherits D-008 hardenings from build_azure.sh (post-Phase-1.0):
+# Inherits the same hardenings as build_azure.sh:
 #   (a) Upstream version auto-detected via `npm view @fabric-msft/svg-icons version`.
 #       Allow FABRIC_VERSION env override.
 #   (b) Relative-drop threshold: refuse if (OLD - NEW) > OLD * 10% unless
@@ -54,7 +54,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --allow-removals) ALLOW_REMOVALS=1; shift ;;
     -h|--help)
-      grep -E '^# (Exit|  |Reproducible|Idempotent|Phase|Scope)' "$0" >&2
+      grep -E '^# (Exit|  |Reproducible|Idempotent|Inherits|Scope)' "$0" >&2
       exit 0 ;;
     *)
       echo "ERROR: unknown argument: $1" >&2
@@ -82,13 +82,13 @@ if [ -z "${FABRIC_VERSION}" ]; then
 fi
 echo "Upstream: ${NPM_PKG}@${FABRIC_VERSION}"
 
-# ---- License re-verification (D-021 per-release clause) ----
+# ---- MIT license re-verification gate (re-checked every build) ----
 LICENSE=$(npm view "${NPM_PKG}@${FABRIC_VERSION}" license 2>/dev/null | tail -1)
 if [ "${LICENSE}" != "MIT" ]; then
-  echo "ERROR: ${NPM_PKG}@${FABRIC_VERSION} license is '${LICENSE}', expected MIT (D-021 gate)" >&2
+  echo "ERROR: ${NPM_PKG}@${FABRIC_VERSION} license is '${LICENSE}', expected MIT" >&2
   exit 2
 fi
-echo "License: ${LICENSE} (D-021 gate satisfied)"
+echo "License: ${LICENSE} (gate satisfied)"
 
 # ---- 1. npm install into isolated source dir ----
 mkdir -p "${SOURCE_DIR}"

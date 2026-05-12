@@ -31,6 +31,5 @@ Source pin: see dist/Fabric/UPSTREAM-VERSION.txt for the exact
 @fabric-msft/svg-icons semver this redistribution was built from.
 
 For full third-party attribution, the MIT license text for the
-@fabric-msft/svg-icons package, and the per-release pre-counsel-ruling
-rationale (project decisions log D-021), see the NOTICE file at the
-repository root.
+@fabric-msft/svg-icons package, and the per-release rationale, see
+the NOTICE file at the repository root.

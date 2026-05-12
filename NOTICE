@@ -68,8 +68,8 @@ Microsoft Fabric icons (source for the dist/Fabric/ icon set):
             https://www.npmjs.com/package/@fabric-msft/svg-icons
   Captured: 2026-05-11 at @fabric-msft/svg-icons@7.0.1 (pinned version recorded
             in dist/Fabric/UPSTREAM-VERSION.txt)
-  License:  MIT (verified at every build via `npm view @fabric-msft/svg-icons license`
-            per D-021 license-gate clause)
+  License:  MIT (verified at every build via `npm view @fabric-msft/svg-icons license`;
+            build fails if upstream license string is anything other than MIT)
   Copyright: Copyright (c) Microsoft Corporation
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
