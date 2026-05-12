@@ -25,11 +25,10 @@ participant "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-archi
 participant "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Azure/Integration/AzureServiceBus.png>\n**Service Bus**" as sb
 participant "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/eventstream_40_item.png>\n**Eventstream**" as estream
 participant "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/lakehouse_40_item.png>\n**Lakehouse**" as lake
-participant "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/notebook_40_item.png>\n**Notebook**\n(Spark)" as nb
+participant "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/data_engineering_48_color.png>\n<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/notebook_40_item.png>\n**Data Engineering**\nSpark notebook" as nb
 participant "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/data_warehouse_40_item.png>\n**Data Warehouse**" as wh
 participant "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/semantic_model_40_item.png>\n**Semantic Model**" as sem
-participant "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/power_bi_48_color.png>\n**Power BI**\n(consumption)" as pbi
-participant "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/report_40_item.png>\n**Report**" as report
+participant "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/power_bi_48_color.png>\n<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/report_40_item.png>\n**Power BI**\nReport" as pbi
 
 == Ingest ==
 aks -> sb : publish OrderCreated event\n(AMQP)
@@ -47,9 +46,8 @@ wh -> sem : refresh semantic model\n(DirectQuery / Import)
 
 == Consume ==
 analyst -> pbi : open report
-pbi -> report : load definition
-report -> sem : DAX query
-sem --> report : aggregated result
-report --> analyst : render dashboard
+pbi -> sem : DAX query
+sem --> pbi : aggregated result
+pbi --> analyst : rendered dashboard
 
 @enduml
