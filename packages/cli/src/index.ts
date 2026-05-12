@@ -3,10 +3,12 @@
 import { Command } from "commander";
 import pkg from "../package.json";
 import { claudeCodeAdapter } from "./adapters/claude-code";
+import { codexAdapter } from "./adapters/codex";
 import { Adapter } from "./adapters/types";
 
 const ADAPTERS = {
   "claude-code": claudeCodeAdapter,
+  "codex":       codexAdapter,
 } as const satisfies Record<string, Adapter>;
 
 type AgentName = keyof typeof ADAPTERS;
