@@ -15,8 +15,8 @@
 #       >10% smaller than what's already in dist/Azure unless --allow-removals.
 #   (c) --allow-removals CLI flag (or ALLOW_REMOVALS=1 env) bypasses the gate.
 #   (d) LC_ALL=C export at script top for deterministic sort + find order.
-#   (e) UPSTREAM-SHA.txt persisted under dist/Azure/ for Phase 1.7 release
-#       notes traceability.
+#   (e) UPSTREAM-SHA.txt persisted under dist/Azure/ so release notes can
+#       reference the exact upstream commit each build was sourced from.
 #   (f) Structured 0/1/2 exit codes matching smoke_urls.sh / smoke_e2e.sh.
 #   (g) Scoped find -delete (`-name '*.png' -delete`) preserves USAGE-RULES.txt
 #       + .gitkeep + future non-PNG artifacts.

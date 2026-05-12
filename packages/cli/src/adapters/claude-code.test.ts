@@ -48,7 +48,7 @@ test("parseFrontmatter: CRLF line endings supported", () => {
   assert.equal(fm.requires_icons, ">=0.1.0");
 });
 
-// ---- fetchWithTimeout retry path (R30, Phase 1.0) ----
+// ---- fetchWithTimeout retry path (transient-5xx absorption) ----
 // Mock `globalThis.fetch` per-test; restore after. Tests use the function's
 // real exponential backoff (max ~1.5s wall-clock for the exhaustion case).
 

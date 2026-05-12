@@ -16,7 +16,7 @@ npx @hanv89/azure-arch-skill@latest install --agent=claude-code
 
 Then in a new Claude Code session, prompt:
 
-> Vẽ system architecture diagram cho Azure AKS app feeding Fabric data plane (Lakehouse + Power BI).
+> Draw a system architecture diagram for an Azure AKS app feeding a Microsoft Fabric data plane (Lakehouse + Power BI).
 
 You get back a `.puml` like the one below. Paste it into <https://www.plantuml.com/plantuml/uml/> or your Confluence PlantUML app, and you see:
 

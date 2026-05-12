@@ -127,8 +127,9 @@ async function safeResolveTarget(target: string): Promise<string> {
 /**
  * Fetch with timeout and 2-retry exponential backoff on transient 5xx
  * responses. Used by `fetchText` and `headOk`; both inherit the retry
- * behavior. Default `retries = 2` matches the R30 fix (Phase 1.0) —
- * future agent adapters reusing this helper get the retry path for free.
+ * behavior. The 2-retry default was added to absorb transient 5xx
+ * upstream errors — future agent adapters reusing this helper get the
+ * retry path for free.
  *
  * Backoff schedule: 500ms after attempt 0, 1s after attempt 1, 2s after
  * attempt 2. Network errors (AbortError, DNS failures) re-throw only

@@ -22,7 +22,7 @@ command -v shuf >/dev/null 2>&1 || { echo "ERROR: shuf not installed (apt instal
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# ---- D-013b: derive OWNER/REPO/BRANCH from git config; allow env override ----
+# ---- Derive OWNER/REPO/BRANCH from git config; allow env override ----
 ORIGIN=$(git -C "$REPO_ROOT" config --get remote.origin.url 2>/dev/null || true)
 ORIGIN_NORMALIZED=${ORIGIN#git@github.com:}
 ORIGIN_NORMALIZED=${ORIGIN_NORMALIZED#https://github.com/}
@@ -38,7 +38,7 @@ BASE="https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}"
 USER_AGENT="azure-icons-smoke/0.6"
 echo "smoke_urls.sh: probing ${OWNER}/${REPO}@${BRANCH}" >&2
 
-# ---- D-013c: per-category random sample (one colored PNG per Azure category) ----
+# ---- Per-category random sample (one colored PNG per Azure category) ----
 # Skip monochrome '(m)' variants so the sample stays readable + URL-encoding-free.
 URLS=()
 for CAT in "$REPO_ROOT"/dist/Azure/*/; do
