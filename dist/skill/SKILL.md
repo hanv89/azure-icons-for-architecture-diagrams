@@ -1,7 +1,7 @@
 ---
 name: azure-architecture-diagram
 description: Use this skill when creating Microsoft Azure or Microsoft Fabric architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram".
-version: 0.3.0
+version: 0.3.1
 requires_icons: ">=0.2.2"
 ---
 
@@ -260,7 +260,7 @@ The Fabric icon filenames use `snake_case` (matching upstream `@fabric-msft/svg-
 
 ### Mixing Azure + Fabric in one diagram
 
-Fabric icons compose cleanly with Azure icons. Typical pattern: Azure infra surrounding a Fabric data plane (e.g. Azure Front Door → Azure App Service → Fabric Lakehouse via Fabric Pipeline → Fabric Notebook → Fabric Data Warehouse → Power BI report). See `examples/02-fabric-data-pipeline.puml` for a worked Fabric-only flow; Azure+Fabric mixed examples will land in later phases.
+Fabric icons compose cleanly with Azure icons. Typical pattern: Azure infra surrounding a Fabric data plane (e.g. Azure Front Door → Azure App Service → Fabric Lakehouse via Fabric Pipeline → Fabric Notebook → Fabric Data Warehouse → Power BI report). See `examples/02-fabric-data-pipeline.puml` for a worked Fabric-only flow, and `examples/03-system-architecture.puml` for a full Azure AKS application feeding a Microsoft Fabric data plane (canonical Azure + Fabric mixed example).
 
 ## Pattern 1: System Architecture Diagram
 
@@ -359,7 +359,11 @@ entra ..> apim : "JWT"
 
 ## Patterns 2-4 (sequence / component / deployment)
 
-These ship in a later release alongside their example `.puml` files. For now this skill only describes Pattern 1 (system architecture); the worked example lives at `examples/01-context.puml`.
+Pattern 1 (system architecture) is the central template above; the remaining patterns are illustrated through worked examples shipped in the same bundle:
+
+- **Sequence flow** — `examples/04-sequence-flow.puml` traces a request across Front Door → AKS → Service Bus → Fabric Eventstream, exercising actor/lifeline/note syntax with Azure + Fabric icons.
+- **Component view (C4 level 3)** — `examples/05-component.puml` zooms into the AKS cluster internals from `03-system-architecture.puml`, showing the microservices, sidecars, and platform-services hooks.
+- **Deployment topology** — `examples/06-deployment.puml` shows a multi-region active-active deployment of the same architecture across paired Azure regions with Fabric workspace replication.
 
 ## Common patterns reference
 
@@ -493,8 +497,11 @@ PNG specs:
 
 ## Available examples
 
-Renderable example diagrams live in `examples/`:
+Renderable example diagrams live in `examples/` (file list mirrors `manifest.json`):
 
 - [`01-context.puml`](examples/01-context.puml) — Azure 3-tier system context (Front Door → App Service → SQL Database).
-
-Additional example diagrams (sequence flow, component view, deployment topology, full hub-spoke architecture) ship in a later release.
+- [`02-fabric-data-pipeline.puml`](examples/02-fabric-data-pipeline.puml) — Microsoft Fabric data-engineering pipeline (Eventstream → Lakehouse → Notebook → Warehouse → Power BI).
+- [`03-system-architecture.puml`](examples/03-system-architecture.puml) — Azure AKS application feeding a Microsoft Fabric data plane (canonical Azure + Fabric mixed example, C4 level 2).
+- [`04-sequence-flow.puml`](examples/04-sequence-flow.puml) — Request sequence across Azure Front Door → AKS → Service Bus → Fabric Eventstream.
+- [`05-component.puml`](examples/05-component.puml) — AKS cluster internals (C4 level 3 zoom into the `03-system-architecture.puml` AKS box).
+- [`06-deployment.puml`](examples/06-deployment.puml) — Multi-region active-active deployment with Fabric workspace replication.
