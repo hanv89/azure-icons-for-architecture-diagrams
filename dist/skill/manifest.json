@@ -9,6 +9,7 @@
     { "src": "dist/skill/examples/02-fabric-data-pipeline.puml", "dest": "examples/02-fabric-data-pipeline.puml", "role": "example" },
     { "src": "dist/skill/examples/03-system-architecture.puml",  "dest": "examples/03-system-architecture.puml",  "role": "example" },
     { "src": "dist/skill/examples/04-sequence-flow.puml",        "dest": "examples/04-sequence-flow.puml",        "role": "example" },
-    { "src": "dist/skill/examples/05-component.puml",            "dest": "examples/05-component.puml",            "role": "example" }
+    { "src": "dist/skill/examples/05-component.puml",            "dest": "examples/05-component.puml",            "role": "example" },
+    { "src": "dist/skill/examples/06-deployment.puml",           "dest": "examples/06-deployment.puml",           "role": "example" }
   ]
 }
