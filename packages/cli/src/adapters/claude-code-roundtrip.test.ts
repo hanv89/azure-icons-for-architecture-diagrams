@@ -6,8 +6,8 @@ import * as os from "node:os";
 import { claudeCodeAdapter, parseFrontmatter } from "./claude-code";
 
 // ---- Adapter round-trip (install → list → uninstall) ----
-// Re-used by Phase 1.3+ adapters via describe.each-style iteration over
-// multiple adapters: same fixture helpers, swap `claudeCodeAdapter` for
+// Re-usable by future adapters via describe.each-style iteration over
+// the adapter list: same fixture helpers, swap `claudeCodeAdapter` for
 // the codex/cursor counterpart.
 
 const SYNTHETIC_SKILL_MD = [
