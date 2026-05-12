@@ -1,7 +1,7 @@
 ---
 name: azure-architecture-diagram
 description: Use this skill when creating Microsoft Azure or Microsoft Fabric architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram".
-version: 0.2.2
+version: 0.3.0
 requires_icons: ">=0.2.2"
 ---
 
