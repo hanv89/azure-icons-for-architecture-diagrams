@@ -444,6 +444,11 @@ export interface FolderAdapterConfig {
   agentFlag: string;
 }
 
+// Persisted at install time so uninstall can iterate the file list without
+// re-fetching the manifest over the network. Hidden filename so it doesn't
+// clutter the user-visible skill folder.
+const PERSISTED_MANIFEST_BASENAME = ".azure-arch-skill-manifest.json";
+
 export function makeFolderInstallAdapter(cfg: FolderAdapterConfig): Adapter {
   const defaultTarget = (): string => path.join(cfg.rootDir(), "skills", SKILL_NAME);
   const defaultSkillsRoot = (): string => path.join(cfg.rootDir(), "skills");
@@ -503,6 +508,14 @@ export function makeFolderInstallAdapter(cfg: FolderAdapterConfig): Adapter {
         await fs.writeFile(path.join(target, dest), body, "utf8");
       }
 
+      // Persist the manifest so uninstall can iterate the file list without
+      // re-fetching from the network.
+      await fs.writeFile(
+        path.join(target, PERSISTED_MANIFEST_BASENAME),
+        JSON.stringify(manifest, null, 2) + "\n",
+        "utf8",
+      );
+
       process.stdout.write(`installed ${SKILL_NAME} to ${target}\n`);
       return 0;
     });
@@ -523,23 +536,92 @@ export function makeFolderInstallAdapter(cfg: FolderAdapterConfig): Adapter {
         throw new Error(`refusing to remove ${target} - not an azure-architecture-diagram skill folder (no matching SKILL.md). Move/rename the directory or remove it manually if intentional.`);
       }
 
-      try {
-        await fs.rm(target, { recursive: true, force: false });
-      } catch (err) {
-        const stillExists = await fs.stat(target).then(() => true).catch(() => false);
-        if (stillExists) {
-          const msg = err instanceof Error ? err.message : String(err);
-          throw new Error(`uninstall partially failed at ${target}: ${msg}; manual cleanup may be required`);
+      // Manifest-scoped removal: read the persisted manifest at install time
+      // and remove only its files + the manifest itself. Leaves any
+      // user-authored content under the same folder in place (with a note).
+      // Fallback: bundles installed before 0.9.0 have no persisted manifest;
+      // legacy whole-folder rm preserves the pre-0.9.0 behaviour.
+      const persistedPath = path.join(target, PERSISTED_MANIFEST_BASENAME);
+      const manifestBody = await fs.readFile(persistedPath, "utf8").catch(() => null);
+
+      if (!manifestBody) {
+        // Legacy uninstall: rm -rf whole folder.
+        try {
+          await fs.rm(target, { recursive: true, force: false });
+        } catch (err) {
+          const stillExists = await fs.stat(target).then(() => true).catch(() => false);
+          if (stillExists) {
+            const msg = err instanceof Error ? err.message : String(err);
+            throw new Error(`uninstall partially failed at ${target}: ${msg}; manual cleanup may be required`);
+          }
+          throw err;
         }
-        throw err;
+      } else {
+        let persistedManifest: Manifest;
+        try {
+          persistedManifest = JSON.parse(manifestBody) as Manifest;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          throw new Error(`persisted manifest at ${persistedPath} is not valid JSON: ${msg}. Remove the file manually then retry.`);
+        }
+        for (const f of persistedManifest.files) {
+          await fs.unlink(path.join(target, f.dest)).catch(() => null);
+        }
+        await fs.unlink(persistedPath).catch(() => null);
+
+        // Recursively prune empty directories under target. Stop at target
+        // itself — only rmdir target if no user-authored files remain.
+        const pruneEmptyDirs = async (dir: string): Promise<void> => {
+          const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
+          for (const e of entries) {
+            if (e.isDirectory()) {
+              await pruneEmptyDirs(path.join(dir, e.name));
+              const subEntries = await fs.readdir(path.join(dir, e.name)).catch(() => []);
+              if (subEntries.length === 0) {
+                await fs.rmdir(path.join(dir, e.name)).catch(() => null);
+              }
+            }
+          }
+        };
+        await pruneEmptyDirs(target);
+
+        const remaining = await fs.readdir(target).catch(() => []);
+        if (remaining.length === 0) {
+          await fs.rmdir(target).catch(() => null);
+        } else {
+          process.stdout.write(`note: ${target} contains files outside the skill manifest; left in place. Remove manually if intentional.\n`);
+        }
       }
+
       process.stdout.write(`uninstalled ${SKILL_NAME} from ${target}\n`);
       return 0;
     });
   }
 
   async function update(opts: UpdateOptions): Promise<number> {
-    return install({ ...opts, overwrite: true });
+    return withFatalReturn(async () => {
+      const target = await resolve(opts.target ?? defaultTarget());
+      const base = baseUrl(opts.version);
+      const manifest = await fetchManifest(base);
+      if (manifest.name !== SKILL_NAME) {
+        throw new Error(`manifest name mismatch: expected '${SKILL_NAME}', got '${manifest.name}'. CLI and bundle are out of sync.`);
+      }
+
+      // Already-at-version short-circuit: read the on-disk SKILL.md
+      // frontmatter version and compare to manifest. Equal -> no-op.
+      const installedSkillMdPath = path.join(target, "SKILL.md");
+      const installedBody = await fs.readFile(installedSkillMdPath, "utf8").catch(() => null);
+      if (installedBody) {
+        const fmInstalled = parseFrontmatter(installedBody);
+        if (fmInstalled.version && fmInstalled.version === manifest.version) {
+          process.stdout.write(`${SKILL_NAME} already at version ${manifest.version} (no-op)\n`);
+          return 0;
+        }
+      }
+
+      // Otherwise proceed with overwriting install (the existing path).
+      return install({ ...opts, overwrite: true });
+    });
   }
 
   async function list(opts: ListOptions): Promise<number> {

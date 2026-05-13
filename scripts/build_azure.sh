@@ -22,7 +22,11 @@
 #       + .gitkeep + future non-PNG artifacts.
 
 set -euo pipefail
-export LC_ALL=C
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+. "${SCRIPT_DIR}/_lib_icon_build.sh"
+set_locale_deterministic
 
 # ---- CLI arg parse ----
 ALLOW_REMOVALS="${ALLOW_REMOVALS:-0}"
@@ -79,19 +83,11 @@ OLD_COUNT="$(find "${DIST_DIR}" -name '*.png' 2>/dev/null | wc -l)"
 NEW_COUNT="$(find "${SOURCE_DIR}/dist" -name '*.png' 2>/dev/null | wc -l)"
 echo "Counts: old=${OLD_COUNT} upstream=${NEW_COUNT}"
 
-if [ "${OLD_COUNT}" -gt 0 ]; then
-  DROP=$(( OLD_COUNT - NEW_COUNT ))
-  THRESHOLD=$(( OLD_COUNT / 10 ))   # 10% relative drop
-  if [ "${DROP}" -gt "${THRESHOLD}" ] && [ "${ALLOW_REMOVALS}" -ne 1 ]; then
-    echo "ERROR: icon count would drop >10% (old=${OLD_COUNT} new=${NEW_COUNT}, drop=${DROP})." >&2
-    echo "Pass --allow-removals or set ALLOW_REMOVALS=1 to override." >&2
-    exit 1
-  fi
-fi
+assert_relative_drop_safe "${OLD_COUNT}" "${NEW_COUNT}" 10 "${ALLOW_REMOVALS}"
 
 # ---- 3. Scoped clean (item g) — preserve USAGE-RULES.txt, .gitkeep, etc. ----
 echo "Cleaning ${DIST_DIR}/**/*.png..."
-find "${DIST_DIR}" -name '*.png' -delete
+scoped_find_delete "${DIST_DIR}" '*.png'
 
 # ---- 4. Copy *.png only, preserving category structure ----
 echo "Copying PNGs..."
@@ -105,7 +101,7 @@ rsync -a \
 find "${DIST_DIR}" -type d -empty -delete
 
 # ---- 6. Persist UPSTREAM-SHA.txt (item e) ----
-echo "${UPSTREAM_SHA}" > "${DIST_DIR}/UPSTREAM-SHA.txt"
+write_upstream_record "${DIST_DIR}/UPSTREAM-SHA.txt" "${UPSTREAM_SHA}"
 
 # ---- 7. Verify ----
 COUNT="$(find "${DIST_DIR}" -name '*.png' | wc -l)"

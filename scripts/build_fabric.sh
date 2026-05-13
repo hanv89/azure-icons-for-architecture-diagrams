@@ -46,7 +46,11 @@
 # Total: ~312 icons at @fabric-msft/svg-icons@7.0.1.
 
 set -euo pipefail
-export LC_ALL=C
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+. "${SCRIPT_DIR}/_lib_icon_build.sh"
+set_locale_deterministic
 
 # ---- CLI arg parse ----
 ALLOW_REMOVALS="${ALLOW_REMOVALS:-0}"
@@ -133,19 +137,11 @@ PASS2_COUNT=$(echo "${PASS2_LIST}" | grep -c '\.svg$' || true)
 NEW_COUNT=$(( PASS1_COUNT + PASS2_COUNT ))
 echo "Counts: old=${OLD_COUNT} new=${NEW_COUNT} (pass1=${PASS1_COUNT} pass2=${PASS2_COUNT})"
 
-if [ "${OLD_COUNT}" -gt 0 ]; then
-  DROP=$(( OLD_COUNT - NEW_COUNT ))
-  THRESHOLD=$(( OLD_COUNT / 10 ))   # 10% relative drop
-  if [ "${DROP}" -gt "${THRESHOLD}" ] && [ "${ALLOW_REMOVALS}" -ne 1 ]; then
-    echo "ERROR: icon count would drop >10% (old=${OLD_COUNT} new=${NEW_COUNT}, drop=${DROP})." >&2
-    echo "Pass --allow-removals or set ALLOW_REMOVALS=1 to override." >&2
-    exit 1
-  fi
-fi
+assert_relative_drop_safe "${OLD_COUNT}" "${NEW_COUNT}" 10 "${ALLOW_REMOVALS}"
 
 # ---- 3. Scoped clean (item g) ----
 echo "Cleaning ${DIST_DIR}/*.png..."
-find "${DIST_DIR}" -name '*.png' -delete
+scoped_find_delete "${DIST_DIR}" '*.png'
 
 # ---- 4a. Pass 1 — SVG -> PNG at 40x40 (item / non-item / plain _40) ----
 echo "Pass 1: converting ${PASS1_COUNT} per-artifact SVGs at 40x40..."
@@ -180,7 +176,7 @@ done <<< "${PASS2_LIST}"
 echo "Converted: ${CONVERTED}"
 
 # ---- 5. Persist UPSTREAM-VERSION.txt (item e) ----
-echo "${NPM_PKG}@${FABRIC_VERSION}" > "${REPO_ROOT}/dist/Fabric/UPSTREAM-VERSION.txt"
+write_upstream_record "${REPO_ROOT}/dist/Fabric/UPSTREAM-VERSION.txt" "${NPM_PKG}@${FABRIC_VERSION}"
 
 # ---- 6. Verify ----
 COUNT="$(find "${DIST_DIR}" -name '*.png' | wc -l)"
