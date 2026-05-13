@@ -2,12 +2,13 @@
 
 import { Command } from "commander";
 import pkg from "../package.json";
-import { ADAPTERS, AgentName, SUPPORTED_AGENTS } from "./adapters/registry";
+import { ADAPTERS, AgentName, ALL_TARGET, SUPPORTED_AGENTS, SUPPORTED_TARGETS } from "./adapters/registry";
 import { Adapter } from "./adapters/types";
+import { runOverAll, Subcommand } from "./all";
 
 function pickAdapter(agent: string): Adapter {
   if (!(agent in ADAPTERS)) {
-    throw new Error(`unknown agent: ${agent} (supported: ${SUPPORTED_AGENTS.join(", ")})`);
+    throw new Error(`unknown agent: ${agent} (supported: ${SUPPORTED_TARGETS.join(", ")})`);
   }
   return ADAPTERS[agent as AgentName];
 }
@@ -17,18 +18,26 @@ const program = new Command()
   .description("Install the Azure architecture diagram skill into your AI coding agent.")
   .version(pkg.version, "-V, --version");
 
-function defineSubcommand(name: keyof Adapter, description: string): void {
+function defineSubcommand(name: Subcommand, description: string): void {
   program
     .command(name)
     .description(description)
-    .requiredOption("--agent <name>", `target AI agent (${SUPPORTED_AGENTS.join("|")})`)
+    .requiredOption("--agent <name>", `target AI agent (${SUPPORTED_TARGETS.join("|")})`)
     .option("--target <dir>", "override target directory (validation use)")
     .action(async (opts) => {
       // Set process.exitCode so any pending async cleanup (file handles, the
       // override-warning stderr write) drains before the event loop empties.
       // Both this top-level path and adapter-internal failures emit a single
       // '^fatal: ' prefix line on stderr — log-parsers can rely on the prefix.
-      process.exitCode = await pickAdapter(opts.agent)[name]({ target: opts.target });
+      const optsForAdapter = { target: opts.target };
+      if (opts.agent === ALL_TARGET) {
+        process.exitCode = await runOverAll(name, optsForAdapter);
+        return;
+      }
+      if (!SUPPORTED_AGENTS.includes(opts.agent)) {
+        throw new Error(`unknown agent: ${opts.agent} (supported: ${SUPPORTED_TARGETS.join(", ")})`);
+      }
+      process.exitCode = await pickAdapter(opts.agent)[name](optsForAdapter);
     });
 }
 

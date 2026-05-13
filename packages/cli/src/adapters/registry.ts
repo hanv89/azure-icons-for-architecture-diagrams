@@ -17,3 +17,9 @@ export const ADAPTERS = {
 export type AgentName = keyof typeof ADAPTERS;
 
 export const SUPPORTED_AGENTS: AgentName[] = Object.keys(ADAPTERS) as AgentName[];
+
+/** Sentinel value for `--agent=all` — iterate every adapter under one command. */
+export const ALL_TARGET = "all" as const;
+
+/** Full target set the CLI's `--agent` flag accepts. */
+export const SUPPORTED_TARGETS: ReadonlyArray<AgentName | typeof ALL_TARGET> = [...SUPPORTED_AGENTS, ALL_TARGET];
