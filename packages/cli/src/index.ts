@@ -2,17 +2,8 @@
 
 import { Command } from "commander";
 import pkg from "../package.json";
-import { claudeCodeAdapter } from "./adapters/claude-code";
-import { codexAdapter } from "./adapters/codex";
+import { ADAPTERS, AgentName, SUPPORTED_AGENTS } from "./adapters/registry";
 import { Adapter } from "./adapters/types";
-
-const ADAPTERS = {
-  "claude-code": claudeCodeAdapter,
-  "codex":       codexAdapter,
-} as const satisfies Record<string, Adapter>;
-
-type AgentName = keyof typeof ADAPTERS;
-const SUPPORTED_AGENTS = Object.keys(ADAPTERS);
 
 function pickAdapter(agent: string): Adapter {
   if (!(agent in ADAPTERS)) {
