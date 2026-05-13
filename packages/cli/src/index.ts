@@ -18,18 +18,24 @@ const program = new Command()
   .description("Install the Azure architecture diagram skill into your AI coding agent.")
   .version(pkg.version, "-V, --version");
 
+const VERSION_RE = /^\d+\.\d+\.\d+$/;
+
 function defineSubcommand(name: Subcommand, description: string): void {
   program
     .command(name)
     .description(description)
     .requiredOption("--agent <name>", `target AI agent (${SUPPORTED_TARGETS.join("|")})`)
     .option("--target <dir>", "override target directory (validation use)")
+    .option("--version <semver>", "pin to a specific skill version (X.Y.Z); default = latest from main")
     .action(async (opts) => {
       // Set process.exitCode so any pending async cleanup (file handles, the
       // override-warning stderr write) drains before the event loop empties.
       // Both this top-level path and adapter-internal failures emit a single
       // '^fatal: ' prefix line on stderr — log-parsers can rely on the prefix.
-      const optsForAdapter = { target: opts.target };
+      if (opts.version !== undefined && !VERSION_RE.test(opts.version)) {
+        throw new Error(`--version must match X.Y.Z (got: ${opts.version})`);
+      }
+      const optsForAdapter = { target: opts.target, version: opts.version };
       if (opts.agent === ALL_TARGET) {
         process.exitCode = await runOverAll(name, optsForAdapter);
         return;
