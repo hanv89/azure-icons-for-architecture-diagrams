@@ -28,11 +28,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install build prerequisites (rsvg-convert + w3m)
+      - name: Install build prerequisites (rsvg-convert)
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y -qq librsvg2-bin w3m
+          sudo apt-get install -y -qq librsvg2-bin
 
       - name: Microsoft Azure Icons ToU monitor
         id: tou_monitor
