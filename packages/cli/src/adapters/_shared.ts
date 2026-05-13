@@ -315,14 +315,21 @@ export function stripFrontmatter(md: string): string {
  * `>=X.Y.Z` today; the other 3 forms exist for future-proofing.
  *
  * Numeric encoding `maj * 1e6 + min * 1e3 + pat` rules out individual segments
- * >= 1000, which is fine for icons semver in the foreseeable future.
+ * >= 1000 — if a future icons release ever bumps any segment to 4 digits the
+ * encoding silently collides (e.g. 1.0.1000 vs 1.1.0). We hard-fail on that
+ * input rather than mis-compare.
  */
+const SEMVER_SEGMENT_MAX = 999;
+
 export function satisfiesRequiresIcons(constraint: string, iconsSemver: string): boolean {
   const tagParts = iconsSemver.split(".").map(Number);
   if (tagParts.length !== 3 || tagParts.some(n => isNaN(n))) {
     throw new Error(`icons semver malformed: ${iconsSemver}`);
   }
   const [tagMaj, tagMin, tagPat] = tagParts;
+  if (tagMaj > SEMVER_SEGMENT_MAX || tagMin > SEMVER_SEGMENT_MAX || tagPat > SEMVER_SEGMENT_MAX) {
+    throw new Error(`icons semver segment exceeds matcher capacity (${SEMVER_SEGMENT_MAX}): ${iconsSemver}`);
+  }
 
   const trimmed = constraint.trim().replace(/^["']|["']$/g, "");
   const m = trimmed.match(/^(>=|\^|~|)(\d+)\.(\d+)\.(\d+)$/);
@@ -333,6 +340,9 @@ export function satisfiesRequiresIcons(constraint: string, iconsSemver: string):
   const maj = Number(majS);
   const min = Number(minS);
   const pat = Number(patS);
+  if (maj > SEMVER_SEGMENT_MAX || min > SEMVER_SEGMENT_MAX || pat > SEMVER_SEGMENT_MAX) {
+    throw new Error(`requires_icons segment exceeds matcher capacity (${SEMVER_SEGMENT_MAX}): ${constraint}`);
+  }
   const tag = tagMaj * 1e6 + tagMin * 1e3 + tagPat;
   const ref = maj * 1e6 + min * 1e3 + pat;
 
@@ -390,4 +400,154 @@ export async function withFatalReturn(fn: () => Promise<number>): Promise<number
     process.stderr.write(`fatal: ${err instanceof Error ? err.message : String(err)}\n`);
     return 1;
   }
+}
+
+/**
+ * Build a "folder install" adapter — the install shape shared by Claude Code
+ * and Codex CLI, both of which manage a per-user skills folder containing
+ * `<skill-name>/SKILL.md` + bundled examples.
+ *
+ * Configuration:
+ *   - `rootDir()`     — absolute path to the agent's root (e.g. `~/.claude` or `~/.codex`).
+ *   - `rootDisplay()` — human-readable name for the root (used in error messages).
+ *   - `agentFlag`     — value of the `--agent=<flag>` for THIS adapter (used in error messages).
+ *
+ * Returns an `Adapter` with the same 4 methods every adapter ships. Cursor
+ * does NOT use this factory because its on-disk layout (single .mdc file at
+ * `<cwd>/.cursor/rules/`) is structurally different.
+ */
+import type { Adapter, InstallOptions, UninstallOptions, UpdateOptions, ListOptions } from "./types";
+
+export interface FolderAdapterConfig {
+  rootDir(): string;
+  rootDisplay(): string;
+  agentFlag: string;
+}
+
+export function makeFolderInstallAdapter(cfg: FolderAdapterConfig): Adapter {
+  const defaultTarget = (): string => path.join(cfg.rootDir(), "skills", SKILL_NAME);
+  const defaultSkillsRoot = (): string => path.join(cfg.rootDir(), "skills");
+  const resolve = (target: string): Promise<string> => safeResolveTarget(target, cfg.rootDir(), cfg.rootDisplay());
+
+  const isOurSkillDir = async (dir: string): Promise<boolean> => {
+    try {
+      const skillMd = await fs.readFile(path.join(dir, "SKILL.md"), "utf8");
+      return parseFrontmatter(skillMd).name === SKILL_NAME;
+    } catch {
+      return false;
+    }
+  };
+
+  async function install(opts: InstallOptions): Promise<number> {
+    return withFatalReturn(async () => {
+      const target = await resolve(opts.target ?? defaultTarget());
+      const base = baseUrl(opts.version);
+
+      if (!process.env.AZURE_ARCH_SKILL_TARGET_ROOT && path.basename(target) !== SKILL_NAME) {
+        throw new Error(`refusing to install at ${target} - target basename must be '${SKILL_NAME}' (default ${cfg.rootDisplay()}/skills/${SKILL_NAME}/). Set AZURE_ARCH_SKILL_TARGET_ROOT to install into a custom test root.`);
+      }
+
+      const manifest = await fetchManifest(base);
+      if (manifest.name !== SKILL_NAME) {
+        throw new Error(`manifest name mismatch: expected '${SKILL_NAME}', got '${manifest.name}'. CLI and bundle are out of sync.`);
+      }
+
+      const presence = await Promise.all(
+        manifest.files.map(async ({ dest }) => ({
+          dest,
+          exists: await fs.stat(path.join(target, dest)).then(() => true).catch(() => false),
+        })),
+      );
+      const someExist = presence.some(p => p.exists);
+      const allExist = presence.every(p => p.exists);
+      if (someExist && !opts.overwrite) {
+        throw new Error(allExist
+          ? `${target} already contains an install. Run 'azure-arch-skill update --agent=${cfg.agentFlag}' to refresh.`
+          : `${target} contains a partial install (${presence.filter(p => !p.exists).map(p => p.dest).join(", ")} missing). Run 'azure-arch-skill update --agent=${cfg.agentFlag}' to repair.`);
+      }
+
+      const skillUrl = `${base}/${manifest.files[0].src}`;
+      const skillMd = await fetchText(skillUrl);
+      const fm = parseFrontmatter(skillMd);
+      if (!fm.requires_icons) {
+        throw new Error("SKILL.md missing requires_icons frontmatter");
+      }
+      await verifyIconsAvailability(base, manifest, opts.version);
+
+      for (const { dest } of manifest.files) {
+        await fs.mkdir(path.dirname(path.join(target, dest)), { recursive: true });
+      }
+      await fs.writeFile(path.join(target, manifest.files[0].dest), skillMd, "utf8");
+      for (const { src, dest } of manifest.files.slice(1)) {
+        const body = await fetchText(`${base}/${src}`);
+        await fs.writeFile(path.join(target, dest), body, "utf8");
+      }
+
+      process.stdout.write(`installed ${SKILL_NAME} to ${target}\n`);
+      return 0;
+    });
+  }
+
+  async function uninstall(opts: UninstallOptions): Promise<number> {
+    return withFatalReturn(async () => {
+      const target = await resolve(opts.target ?? defaultTarget());
+
+      const exists = await fs.stat(target).then(() => true).catch(() => false);
+      if (!exists) {
+        process.stdout.write(`(nothing to uninstall at ${target})\n`);
+        return 0;
+      }
+
+      const ours = await isOurSkillDir(target);
+      if (!ours) {
+        throw new Error(`refusing to remove ${target} - not an azure-architecture-diagram skill folder (no matching SKILL.md). Move/rename the directory or remove it manually if intentional.`);
+      }
+
+      try {
+        await fs.rm(target, { recursive: true, force: false });
+      } catch (err) {
+        const stillExists = await fs.stat(target).then(() => true).catch(() => false);
+        if (stillExists) {
+          const msg = err instanceof Error ? err.message : String(err);
+          throw new Error(`uninstall partially failed at ${target}: ${msg}; manual cleanup may be required`);
+        }
+        throw err;
+      }
+      process.stdout.write(`uninstalled ${SKILL_NAME} from ${target}\n`);
+      return 0;
+    });
+  }
+
+  async function update(opts: UpdateOptions): Promise<number> {
+    return install({ ...opts, overwrite: true });
+  }
+
+  async function list(opts: ListOptions): Promise<number> {
+    return withFatalReturn(async () => {
+      const root = await resolve(opts.target ?? defaultSkillsRoot());
+
+      const exists = await fs.stat(root).then(() => true).catch(() => false);
+      if (!exists) {
+        process.stdout.write("(no skills installed)\n");
+        return 0;
+      }
+      const entries = await fs.readdir(root, { withFileTypes: true });
+      const rows: string[] = [];
+      for (const e of entries) {
+        if (!e.isDirectory()) continue;
+        const skillMdPath = path.join(root, e.name, "SKILL.md");
+        try {
+          const md = await fs.readFile(skillMdPath, "utf8");
+          const fm = parseFrontmatter(md);
+          rows.push(`${fm.name ?? e.name}\t${fm.version ?? "?"}`);
+        } catch {
+          // not a skill folder; skip silently
+        }
+      }
+      process.stdout.write(rows.length ? rows.join("\n") + "\n" : "(no skills installed)\n");
+      return 0;
+    });
+  }
+
+  return { install, uninstall, update, list };
 }

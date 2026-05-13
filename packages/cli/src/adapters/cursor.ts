@@ -36,6 +36,11 @@ const RULE_DESCRIPTION =
   "Triggers on \"draw Azure architecture\", \"create deployment diagram\", \"Lakehouse + Notebook + Warehouse diagram\", " +
   "\"vẽ Azure\", \"PlantUML diagram for [project]\".";
 
+// Cursor's rule discovery is per-project: <cwd>/.cursor/rules/*.mdc is the
+// canonical install location, so the team picks up the rule via the project's
+// git repo. A HOME-relative install would only help the local developer. The
+// trade-off — running install from an unintended cwd — is mitigated by a
+// runtime warn-line (see `install` below) and the `--target=<path>` override.
 function defaultTarget(): string {
   return path.join(process.cwd(), ".cursor", "rules");
 }
@@ -46,16 +51,16 @@ async function resolveTarget(target: string): Promise<string> {
   return safeResolveTarget(target, process.cwd(), CWD_DISPLAY);
 }
 
-/**
- * Provenance marker emitted into the rendered .mdc body so `list` / `uninstall`
- * can recognise our rule without re-fetching upstream. The marker is the first
- * non-frontmatter line after the closing `---`.
- */
+// `provenanceMarker` and `PROVENANCE_RE` are paired: the regex MUST parse what
+// the marker writes. Keep them in lockstep — a unit test in version.test.ts
+// asserts the round-trip.
 function provenanceMarker(version: string, requiresIcons: string): string {
   return `<!-- ${SKILL_NAME} v${version} (requires_icons: ${requiresIcons}) -->`;
 }
 
 const PROVENANCE_RE = new RegExp(`<!--\\s*${SKILL_NAME}\\s+v([^\\s]+)\\s+\\(requires_icons:\\s*([^)]+)\\)\\s*-->`);
+
+export { provenanceMarker, PROVENANCE_RE };
 
 function renderRule(skillBody: string, version: string, requiresIcons: string): string {
   return [
@@ -83,6 +88,9 @@ async function isOurRuleFile(file: string): Promise<{ ours: boolean; version?: s
 
 async function install(opts: InstallOptions): Promise<number> {
   return withFatalReturn(async () => {
+    if (opts.target === undefined) {
+      process.stderr.write(`note: Cursor target resolved to ${defaultTarget()} (per-project install). Pass --target=<path> to override.\n`);
+    }
     const targetDir = await resolveTarget(opts.target ?? defaultTarget());
     const base = baseUrl(opts.version);
     const ruleFile = path.join(targetDir, RULE_BASENAME);

@@ -2,81 +2,25 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as os from "node:os";
 import { Adapter } from "./types";
 import { ADAPTERS } from "./registry";
 import { parseFrontmatter } from "./claude-code";
+import { installFetchMock, mkTmpdir, rmTmpdir, SYNTHETIC_VERSION } from "../__test_fixtures__/synthetic-bundle";
 
 // ---- Adapter round-trip (install → list → uninstall) ----
 // Iterates over every adapter in the shared registry. Adding a new adapter
 // is a one-line entry in registry.ts plus (if the adapter writes a different
 // on-disk layout than the manifest-mirror default) one EXPECTATIONS entry.
 
-const SYNTHETIC_SKILL_MD = [
-  "---",
-  "name: azure-architecture-diagram",
-  "description: test fixture",
-  "version: 0.5.0",
-  'requires_icons: ">=0.2.2"',
-  "---",
-  "# Test skill body",
-  "",
-  "This is a synthetic SKILL.md used only by the round-trip test fixture.",
-].join("\n");
-
-const SYNTHETIC_EXAMPLE = "@startuml\ntitle Test\n@enduml\n";
-
-const SYNTHETIC_MANIFEST = {
-  $schema: "./manifest.schema.json",
-  name: "azure-architecture-diagram",
-  version: "0.5.0",
-  requires_icons: ">=0.2.2",
-  files: [
-    { src: "dist/skill/SKILL.md", dest: "SKILL.md", role: "skill" },
-    { src: "dist/skill/examples/01-context.puml", dest: "examples/01-context.puml", role: "example" },
-  ],
-};
-
-const realFetch = globalThis.fetch;
-
-function installFetchMock(): { restore: () => void } {
-  globalThis.fetch = (async (url: any, init?: any) => {
-    const u = url.toString();
-    const method = (init?.method ?? "GET").toUpperCase();
-    if (method === "HEAD") {
-      return new Response(null, { status: 200 });
-    }
-    if (u.endsWith("/dist/skill/manifest.json")) {
-      return new Response(JSON.stringify(SYNTHETIC_MANIFEST), { status: 200, headers: { "Content-Type": "application/json" } });
-    }
-    if (u.endsWith("/dist/skill/SKILL.md")) {
-      return new Response(SYNTHETIC_SKILL_MD, { status: 200 });
-    }
-    if (u.endsWith("/dist/skill/examples/01-context.puml")) {
-      return new Response(SYNTHETIC_EXAMPLE, { status: 200 });
-    }
-    return new Response("not found", { status: 404 });
-  }) as typeof fetch;
-  return { restore: () => { globalThis.fetch = realFetch; } };
-}
-
-function mkTmpdir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "azure-arch-skill-test-"));
-}
-
-function rmTmpdir(dir: string): void {
-  fs.rmSync(dir, { recursive: true, force: true });
-}
-
 // Per-adapter assertion overrides for adapters whose on-disk layout differs
 // from the default manifest-mirror (Claude Code + Codex install a folder
 // containing SKILL.md + examples/; Cursor installs a single .mdc file).
 interface Expectations {
-  installedFile: (target: string) => string;     // file whose existence proves install ran
-  readdirAt: (skillsRoot: string, target: string) => string;   // dir to scan for the post-install entry
-  expectedTopEntries: string[];                  // expected immediate entries at readdirAt
-  listTarget: (skillsRoot: string, target: string) => string;  // what to pass as `list({ target })`
-  uninstallProbeMissing: (target: string) => string;           // path that should not exist post-uninstall
+  installedFile: (target: string) => string;
+  readdirAt: (skillsRoot: string, target: string) => string;
+  expectedTopEntries: string[];
+  listTarget: (skillsRoot: string, target: string) => string;
+  uninstallProbeMissing: (target: string) => string;
 }
 
 const FOLDER_INSTALL: Expectations = {
@@ -103,11 +47,16 @@ const EXPECTATIONS: Record<string, Expectations> = {
 
 const ADAPTER_ENTRIES = Object.entries(ADAPTERS) as Array<[string, Adapter]>;
 
+// Meta-test: every adapter registered in ADAPTERS must have an EXPECTATIONS
+// entry, otherwise the round-trip suite silently skips it. Fails fast at
+// test-run time rather than during a later release smoke.
+test("meta: every registered adapter has an EXPECTATIONS entry", () => {
+  const missing = Object.keys(ADAPTERS).filter(name => !EXPECTATIONS[name]);
+  assert.deepEqual(missing, [], `adapters missing EXPECTATIONS: ${missing.join(", ")}`);
+});
+
 for (const [name, adapter] of ADAPTER_ENTRIES) {
   const exp = EXPECTATIONS[name];
-  if (!exp) {
-    throw new Error(`adapter '${name}' is missing an EXPECTATIONS entry in adapters-roundtrip.test.ts`);
-  }
 
   test(`${name} round-trip: install writes SKILL.md + example into target`, async () => {
     const tmpdir = mkTmpdir();
@@ -121,8 +70,6 @@ for (const [name, adapter] of ADAPTER_ENTRIES) {
       assert.ok(fs.existsSync(exp.installedFile(target)), `installed file present at ${exp.installedFile(target)}`);
       const written = fs.readFileSync(exp.installedFile(target), "utf8");
       assert.ok(written.startsWith("---"), "installed file preserves frontmatter");
-      // Cursor renders its own frontmatter then embeds the SKILL body; the upstream
-      // skill name still appears as part of the provenance marker / body text.
       assert.match(written, /azure-architecture-diagram/);
     } finally {
       restore();
@@ -133,9 +80,8 @@ for (const [name, adapter] of ADAPTER_ENTRIES) {
   });
 
   test(`${name} round-trip: list after install discovers the installed skill`, async () => {
-    // Assert via fs + parseFrontmatter rather than capturing list()'s stdout:
-    // hijacking process.stdout.write inside node:test confuses the runner's
-    // buffered reporter (other tests' ✔ lines get eaten by the capture buffer).
+    // Assert via fs + parseFrontmatter rather than capturing list()'s stdout —
+    // see synthetic-bundle.ts silenceStderr() note for the gotcha.
     const tmpdir = mkTmpdir();
     const skillsRoot = path.join(tmpdir, "skills");
     const target = path.join(skillsRoot, "azure-architecture-diagram");
@@ -152,12 +98,10 @@ for (const [name, adapter] of ADAPTER_ENTRIES) {
       const body = fs.readFileSync(installedPath, "utf8");
       const fm = parseFrontmatter(body);
       if (name === "cursor") {
-        // Cursor adapter regenerates frontmatter (description-driven rule);
-        // the upstream skill name + version live in the provenance marker.
-        assert.match(body, /<!--\s*azure-architecture-diagram\s+v0\.5\.0\s+/);
+        assert.match(body, new RegExp(`<!--\\s*azure-architecture-diagram\\s+v${SYNTHETIC_VERSION.replace(/\./g, "\\.")}\\s+`));
       } else {
         assert.equal(fm.name, "azure-architecture-diagram");
-        assert.equal(fm.version, "0.5.0");
+        assert.equal(fm.version, SYNTHETIC_VERSION);
       }
 
       const exit = await adapter.list({ target: exp.listTarget(skillsRoot, target) });

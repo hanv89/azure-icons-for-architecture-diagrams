@@ -1,4 +1,4 @@
-import { Adapter, InstallOptions, UninstallOptions, UpdateOptions, ListOptions } from "./adapters/types";
+import { Adapter, AdapterOpts } from "./adapters/types";
 import { ADAPTERS, AgentName, SUPPORTED_AGENTS } from "./adapters/registry";
 
 // Dispatcher for --agent=all. Iterates the agent registry and applies one
@@ -18,19 +18,13 @@ import { ADAPTERS, AgentName, SUPPORTED_AGENTS } from "./adapters/registry";
 
 export type Subcommand = keyof Adapter;
 
-type SubcommandOpts =
-  | InstallOptions
-  | UninstallOptions
-  | UpdateOptions
-  | ListOptions;
-
 interface AdapterOutcome {
   agent: AgentName;
   exit: number;
   error?: Error;
 }
 
-export async function runOverAll(sub: Subcommand, opts: SubcommandOpts): Promise<number> {
+export async function runOverAll(sub: Subcommand, opts: AdapterOpts): Promise<number> {
   if (SUPPORTED_AGENTS.length === 0) {
     throw new Error("no adapters loaded in registry (registry.ts ADAPTERS is empty)");
   }
@@ -57,7 +51,7 @@ export async function runOverAll(sub: Subcommand, opts: SubcommandOpts): Promise
   if (isTransactional && failures.length > 0) {
     for (const agent of completed.slice().reverse()) {
       try {
-        const exit = await ADAPTERS[agent].uninstall(opts as UninstallOptions);
+        const exit = await ADAPTERS[agent].uninstall(opts);
         if (exit === 0) {
           rolledBack.push(agent);
         } else {
@@ -75,9 +69,10 @@ export async function runOverAll(sub: Subcommand, opts: SubcommandOpts): Promise
   return failures.length > 0 ? 1 : 0;
 }
 
-async function runOne(adapter: Adapter, agent: AgentName, sub: Subcommand, opts: SubcommandOpts): Promise<AdapterOutcome> {
+async function runOne(adapter: Adapter, agent: AgentName, sub: Subcommand, opts: AdapterOpts): Promise<AdapterOutcome> {
   try {
-    const exit = await adapter[sub](opts as any);
+    // All four Adapter methods now accept the same AdapterOpts shape (see types.ts).
+    const exit = await adapter[sub](opts);
     return { agent, exit };
   } catch (err) {
     return { agent, exit: 1, error: err instanceof Error ? err : new Error(String(err)) };

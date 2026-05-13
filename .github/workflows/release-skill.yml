@@ -55,6 +55,12 @@ jobs:
       - name: Run tests before publish
         run: npm test
 
+      - name: npm audit gate (block publish on high-severity advisories)
+        run: |
+          # Block a release if a runtime dep has an unpatched high/critical CVE.
+          # --omit=dev so a vulnerable test-only dep doesn't block the publish.
+          npm audit --omit=dev --audit-level=high
+
       - name: Detect npm dist-tag from git tag
         id: dist
         run: |
