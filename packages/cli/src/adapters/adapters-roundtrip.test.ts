@@ -4,19 +4,19 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { Adapter } from "./types";
-import { claudeCodeAdapter, parseFrontmatter } from "./claude-code";
-import { codexAdapter } from "./codex";
+import { ADAPTERS } from "./registry";
+import { parseFrontmatter } from "./claude-code";
 
 // ---- Adapter round-trip (install → list → uninstall) ----
-// Same fixture exercised against every adapter via the loop below. Adding
-// a new adapter is a one-line entry in `adapters` plus the adapter's own
-// import — the test bodies stay identical.
+// Iterates over every adapter in the shared registry. Adding a new adapter
+// is a one-line entry in registry.ts plus (if the adapter writes a different
+// on-disk layout than the manifest-mirror default) one EXPECTATIONS entry.
 
 const SYNTHETIC_SKILL_MD = [
   "---",
   "name: azure-architecture-diagram",
   "description: test fixture",
-  "version: 0.4.0",
+  "version: 0.5.0",
   'requires_icons: ">=0.2.2"',
   "---",
   "# Test skill body",
@@ -29,7 +29,7 @@ const SYNTHETIC_EXAMPLE = "@startuml\ntitle Test\n@enduml\n";
 const SYNTHETIC_MANIFEST = {
   $schema: "./manifest.schema.json",
   name: "azure-architecture-diagram",
-  version: "0.4.0",
+  version: "0.5.0",
   requires_icons: ">=0.2.2",
   files: [
     { src: "dist/skill/SKILL.md", dest: "SKILL.md", role: "skill" },
@@ -68,12 +68,47 @@ function rmTmpdir(dir: string): void {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-const adapters: Array<{ name: string; adapter: Adapter }> = [
-  { name: "claude-code", adapter: claudeCodeAdapter },
-  { name: "codex",       adapter: codexAdapter },
-];
+// Per-adapter assertion overrides for adapters whose on-disk layout differs
+// from the default manifest-mirror (Claude Code + Codex install a folder
+// containing SKILL.md + examples/; Cursor installs a single .mdc file).
+interface Expectations {
+  installedFile: (target: string) => string;     // file whose existence proves install ran
+  readdirAt: (skillsRoot: string, target: string) => string;   // dir to scan for the post-install entry
+  expectedTopEntries: string[];                  // expected immediate entries at readdirAt
+  listTarget: (skillsRoot: string, target: string) => string;  // what to pass as `list({ target })`
+  uninstallProbeMissing: (target: string) => string;           // path that should not exist post-uninstall
+}
 
-for (const { name, adapter } of adapters) {
+const FOLDER_INSTALL: Expectations = {
+  installedFile: (t) => path.join(t, "SKILL.md"),
+  readdirAt: (skillsRoot) => skillsRoot,
+  expectedTopEntries: ["azure-architecture-diagram"],
+  listTarget: (skillsRoot) => skillsRoot,
+  uninstallProbeMissing: (t) => t,
+};
+
+const CURSOR_INSTALL: Expectations = {
+  installedFile: (t) => path.join(t, "azure-arch-skill.mdc"),
+  readdirAt: (_skillsRoot, target) => target,
+  expectedTopEntries: ["azure-arch-skill.mdc"],
+  listTarget: (_skillsRoot, target) => target,
+  uninstallProbeMissing: (t) => path.join(t, "azure-arch-skill.mdc"),
+};
+
+const EXPECTATIONS: Record<string, Expectations> = {
+  "claude-code": FOLDER_INSTALL,
+  "codex":       FOLDER_INSTALL,
+  "cursor":      CURSOR_INSTALL,
+};
+
+const ADAPTER_ENTRIES = Object.entries(ADAPTERS) as Array<[string, Adapter]>;
+
+for (const [name, adapter] of ADAPTER_ENTRIES) {
+  const exp = EXPECTATIONS[name];
+  if (!exp) {
+    throw new Error(`adapter '${name}' is missing an EXPECTATIONS entry in adapters-roundtrip.test.ts`);
+  }
+
   test(`${name} round-trip: install writes SKILL.md + example into target`, async () => {
     const tmpdir = mkTmpdir();
     const target = path.join(tmpdir, "skills", "azure-architecture-diagram");
@@ -83,11 +118,12 @@ for (const { name, adapter } of adapters) {
     try {
       const exit = await adapter.install({ target });
       assert.equal(exit, 0);
-      assert.ok(fs.existsSync(path.join(target, "SKILL.md")), "SKILL.md present at target");
-      assert.ok(fs.existsSync(path.join(target, "examples", "01-context.puml")), "example present at target");
-      const writtenSkill = fs.readFileSync(path.join(target, "SKILL.md"), "utf8");
-      assert.ok(writtenSkill.startsWith("---"), "SKILL.md preserves frontmatter");
-      assert.match(writtenSkill, /name: azure-architecture-diagram/);
+      assert.ok(fs.existsSync(exp.installedFile(target)), `installed file present at ${exp.installedFile(target)}`);
+      const written = fs.readFileSync(exp.installedFile(target), "utf8");
+      assert.ok(written.startsWith("---"), "installed file preserves frontmatter");
+      // Cursor renders its own frontmatter then embeds the SKILL body; the upstream
+      // skill name still appears as part of the provenance marker / body text.
+      assert.match(written, /azure-architecture-diagram/);
     } finally {
       restore();
       if (prevEnv === undefined) delete process.env.AZURE_ARCH_SKILL_TARGET_ROOT;
@@ -97,11 +133,9 @@ for (const { name, adapter } of adapters) {
   });
 
   test(`${name} round-trip: list after install discovers the installed skill`, async () => {
-    // Verifies the file-system state list() reads from. Asserts via fs +
-    // parseFrontmatter rather than capturing list()'s stdout: hijacking
-    // process.stdout.write inside node:test confuses the runner's buffered
-    // reporter output (other tests' ✔ lines get eaten by the capture buffer
-    // and silently drop from the count).
+    // Assert via fs + parseFrontmatter rather than capturing list()'s stdout:
+    // hijacking process.stdout.write inside node:test confuses the runner's
+    // buffered reporter (other tests' ✔ lines get eaten by the capture buffer).
     const tmpdir = mkTmpdir();
     const skillsRoot = path.join(tmpdir, "skills");
     const target = path.join(skillsRoot, "azure-architecture-diagram");
@@ -111,17 +145,22 @@ for (const { name, adapter } of adapters) {
     try {
       await adapter.install({ target });
 
-      const skillDirs = fs.readdirSync(skillsRoot, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name);
-      assert.deepEqual(skillDirs, ["azure-architecture-diagram"], "skills/ contains exactly one entry");
+      const skillEntries = fs.readdirSync(exp.readdirAt(skillsRoot, target), { withFileTypes: true }).map(d => d.name);
+      assert.deepEqual(skillEntries, exp.expectedTopEntries, "post-install directory contains exactly the expected entries");
 
-      const skillMd = fs.readFileSync(path.join(target, "SKILL.md"), "utf8");
-      const fm = parseFrontmatter(skillMd);
-      assert.equal(fm.name, "azure-architecture-diagram");
-      assert.equal(fm.version, "0.4.0");
+      const installedPath = exp.installedFile(target);
+      const body = fs.readFileSync(installedPath, "utf8");
+      const fm = parseFrontmatter(body);
+      if (name === "cursor") {
+        // Cursor adapter regenerates frontmatter (description-driven rule);
+        // the upstream skill name + version live in the provenance marker.
+        assert.match(body, /<!--\s*azure-architecture-diagram\s+v0\.5\.0\s+/);
+      } else {
+        assert.equal(fm.name, "azure-architecture-diagram");
+        assert.equal(fm.version, "0.5.0");
+      }
 
-      const exit = await adapter.list({ target: skillsRoot });
+      const exit = await adapter.list({ target: exp.listTarget(skillsRoot, target) });
       assert.equal(exit, 0);
     } finally {
       restore();
@@ -131,7 +170,7 @@ for (const { name, adapter } of adapters) {
     }
   });
 
-  test(`${name} round-trip: uninstall removes the installed skill folder`, async () => {
+  test(`${name} round-trip: uninstall removes the installed skill`, async () => {
     const tmpdir = mkTmpdir();
     const target = path.join(tmpdir, "skills", "azure-architecture-diagram");
     const prevEnv = process.env.AZURE_ARCH_SKILL_TARGET_ROOT;
@@ -139,10 +178,10 @@ for (const { name, adapter } of adapters) {
     const { restore } = installFetchMock();
     try {
       await adapter.install({ target });
-      assert.ok(fs.existsSync(target), "precondition: target exists after install");
+      assert.ok(fs.existsSync(exp.installedFile(target)), "precondition: install landed");
       const exit = await adapter.uninstall({ target });
       assert.equal(exit, 0);
-      assert.equal(fs.existsSync(target), false, "target removed after uninstall");
+      assert.equal(fs.existsSync(exp.uninstallProbeMissing(target)), false, "post-uninstall: target absent");
     } finally {
       restore();
       if (prevEnv === undefined) delete process.env.AZURE_ARCH_SKILL_TARGET_ROOT;

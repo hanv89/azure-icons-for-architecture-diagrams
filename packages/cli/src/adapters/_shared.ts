@@ -258,6 +258,20 @@ export function parseFrontmatter(md: string): Frontmatter {
   return out;
 }
 
+/**
+ * Strip the leading `---\n...\n---\n` YAML frontmatter block from a markdown
+ * string. Returns the body unchanged if no frontmatter is detected.
+ *
+ * Used by adapters that re-render the upstream SKILL.md for a different host
+ * (e.g. Cursor's `.mdc` rule files, which carry their own frontmatter shape
+ * and embed the SKILL.md body without its original frontmatter).
+ */
+export function stripFrontmatter(md: string): string {
+  const text = md.replace(/^﻿/, "");
+  const match = text.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
+  return match ? text.slice(match[0].length) : text;
+}
+
 export async function withFatalReturn(fn: () => Promise<number>): Promise<number> {
   try {
     return await fn();

@@ -1,7 +1,7 @@
 {
   "$schema": "./manifest.schema.json",
   "name": "azure-architecture-diagram",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "requires_icons": ">=0.2.2",
   "files": [
     { "src": "dist/skill/SKILL.md",                              "dest": "SKILL.md",                              "role": "skill" },
