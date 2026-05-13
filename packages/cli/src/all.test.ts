@@ -89,8 +89,9 @@ interface SilencedStreams {
 }
 
 // Silence stderr summary lines so the test reporter's output stays readable.
-// We deliberately do NOT silence stdout (the round-trip Phase 1.2.5 gotcha:
-// hijacking process.stdout.write inside a test confuses node:test's reporter).
+// We deliberately do NOT silence stdout: hijacking process.stdout.write inside
+// a node:test test confuses the runner's buffered reporter — other tests' ✔
+// lines get eaten by the capture buffer and silently drop from the count.
 function silenceStderr(): SilencedStreams {
   const orig = process.stderr.write.bind(process.stderr);
   (process.stderr.write as any) = (_chunk: any) => true;
