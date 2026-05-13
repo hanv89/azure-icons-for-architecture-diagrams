@@ -2,16 +2,15 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { Adapter, InstallOptions, UninstallOptions, UpdateOptions, ListOptions } from "./types";
 import {
-  CANARY_ICON_PATH,
   SKILL_NAME,
   baseUrl,
   fetchManifest,
   fetchText,
   fetchWithTimeout,
-  headOk,
   parseFrontmatter,
   safeResolveTarget,
   stripFrontmatter,
+  verifyIconsAvailability,
   withFatalReturn,
 } from "./_shared";
 
@@ -85,7 +84,7 @@ async function isOurRuleFile(file: string): Promise<{ ours: boolean; version?: s
 async function install(opts: InstallOptions): Promise<number> {
   return withFatalReturn(async () => {
     const targetDir = await resolveTarget(opts.target ?? defaultTarget());
-    const base = baseUrl();
+    const base = baseUrl(opts.version);
     const ruleFile = path.join(targetDir, RULE_BASENAME);
 
     // Fetch manifest first so we know which file is the canonical SKILL.md
@@ -101,11 +100,7 @@ async function install(opts: InstallOptions): Promise<number> {
     if (!fm.requires_icons) {
       throw new Error("SKILL.md missing requires_icons frontmatter");
     }
-    const canaryUrl = `${base}/${CANARY_ICON_PATH}`;
-    const reachable = await headOk(canaryUrl);
-    if (!reachable) {
-      throw new Error(`icon-set unreachable - HEAD ${canaryUrl} failed (skill declares requires_icons=${fm.requires_icons}; this release verifies reachability only, strict semver match planned)`);
-    }
+    await verifyIconsAvailability(base, manifest, opts.version);
 
     const exists = await fs.stat(ruleFile).then(() => true).catch(() => false);
     if (exists && !opts.overwrite) {

@@ -3,15 +3,14 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { Adapter, InstallOptions, UninstallOptions, UpdateOptions, ListOptions } from "./types";
 import {
-  CANARY_ICON_PATH,
   SKILL_NAME,
   baseUrl,
   fetchManifest,
   fetchText,
   fetchWithTimeout,
-  headOk,
   parseFrontmatter,
   safeResolveTarget,
+  verifyIconsAvailability,
   withFatalReturn,
 } from "./_shared";
 
@@ -57,7 +56,7 @@ async function isOurSkillDir(dir: string): Promise<boolean> {
 async function install(opts: InstallOptions): Promise<number> {
   return withFatalReturn(async () => {
     const target = await resolveTarget(opts.target ?? defaultTarget());
-    const base = baseUrl();
+    const base = baseUrl(opts.version);
 
     if (!process.env.AZURE_ARCH_SKILL_TARGET_ROOT && path.basename(target) !== SKILL_NAME) {
       throw new Error(`refusing to install at ${target} - target basename must be '${SKILL_NAME}' (default ${codexRootDisplay()}/skills/${SKILL_NAME}/). Set AZURE_ARCH_SKILL_TARGET_ROOT to install into a custom test root.`);
@@ -88,11 +87,7 @@ async function install(opts: InstallOptions): Promise<number> {
     if (!fm.requires_icons) {
       throw new Error("SKILL.md missing requires_icons frontmatter");
     }
-    const canaryUrl = `${base}/${CANARY_ICON_PATH}`;
-    const reachable = await headOk(canaryUrl);
-    if (!reachable) {
-      throw new Error(`icon-set unreachable - HEAD ${canaryUrl} failed (skill declares requires_icons=${fm.requires_icons}; this release verifies reachability only, strict semver match planned)`);
-    }
+    await verifyIconsAvailability(base, manifest, opts.version);
 
     for (const { dest } of manifest.files) {
       await fs.mkdir(path.dirname(path.join(target, dest)), { recursive: true });

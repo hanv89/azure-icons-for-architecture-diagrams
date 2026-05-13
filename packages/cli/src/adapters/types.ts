@@ -3,19 +3,27 @@ export interface InstallOptions {
   target?: string;
   /** Force overwrite of an existing skill at the target. update() passes true; install() defaults false. */
   overwrite?: boolean;
+  /** Pin the fetched skill bundle to a specific tag (X.Y.Z). Default = main branch. */
+  version?: string;
 }
 
 export interface UninstallOptions {
   target?: string;
+  /** Pin (for symmetry with install; uninstall does not fetch but accepts the field). */
+  version?: string;
 }
 
 export interface UpdateOptions {
   target?: string;
+  /** Pin the bundle version to upgrade to (defaults to latest from main). */
+  version?: string;
 }
 
 export interface ListOptions {
   /** Override the skills root directory (defaults to ~/.claude/skills/). */
   target?: string;
+  /** Pin (for symmetry; list reads local on-disk state and ignores version). */
+  version?: string;
 }
 
 /**

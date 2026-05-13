@@ -9,6 +9,12 @@ import pkg from "../../package.json";
 
 export const DEFAULT_BASE_RAW_URL = "https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main";
 
+// Same repo root without the ref segment; baseUrl() appends `main` (default)
+// or `skill-vX.Y.Z` when --version is supplied.
+const RAW_BASE_NO_REF = "https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams";
+
+const VERSION_RE = /^\d+\.\d+\.\d+$/;
+
 // SKILL_NAME must stay in lockstep with dist/skill/SKILL.md frontmatter `name`.
 // Renaming the skill is a breaking change requiring a coordinated CLI release;
 // existing installs become un-uninstallable until users upgrade the CLI
@@ -46,26 +52,47 @@ export interface Frontmatter {
   requires_icons?: string;
 }
 
-export function baseUrl(): string {
+/**
+ * Resolve the base URL for fetching the skill bundle.
+ *
+ * - `version` undefined → `<RAW_BASE>/main` (default, tracks the upstream main branch).
+ * - `version="X.Y.Z"`   → `<RAW_BASE>/skill-vX.Y.Z` (tag-pinned fetch).
+ * - `AZURE_ARCH_SKILL_BASE_URL` env set → env override wins; `version` is ignored
+ *   (the env exists only for validation harnesses).
+ *
+ * `version` is validated against the strict X.Y.Z regex here as defense-in-depth;
+ * `src/index.ts` also rejects malformed values pre-dispatch.
+ */
+export function baseUrl(version?: string): string {
   const override = process.env.AZURE_ARCH_SKILL_BASE_URL;
-  if (!override) return DEFAULT_BASE_RAW_URL;
-  let u: URL;
-  try {
-    u = new URL(override);
-  } catch {
-    throw new Error(`AZURE_ARCH_SKILL_BASE_URL is not a valid URL: ${override}`);
+  if (override) {
+    let u: URL;
+    try {
+      u = new URL(override);
+    } catch {
+      throw new Error(`AZURE_ARCH_SKILL_BASE_URL is not a valid URL: ${override}`);
+    }
+    if (u.protocol !== "https:") {
+      throw new Error(`AZURE_ARCH_SKILL_BASE_URL must use https; got ${u.protocol}`);
+    }
+    if (!ALLOWED_BASE_URL_HOSTS.has(u.hostname)) {
+      throw new Error(`AZURE_ARCH_SKILL_BASE_URL host '${u.hostname}' not in allow-list (${[...ALLOWED_BASE_URL_HOSTS].join(", ")})`);
+    }
+    if (!u.pathname.startsWith(ALLOWED_BASE_URL_PATH_PREFIX)) {
+      throw new Error(`AZURE_ARCH_SKILL_BASE_URL path must start with ${ALLOWED_BASE_URL_PATH_PREFIX}`);
+    }
+    process.stderr.write(`warn: AZURE_ARCH_SKILL_BASE_URL override active: ${override}\n`);
+    return override.replace(/\/$/, "");
   }
-  if (u.protocol !== "https:") {
-    throw new Error(`AZURE_ARCH_SKILL_BASE_URL must use https; got ${u.protocol}`);
+
+  if (version !== undefined) {
+    if (!VERSION_RE.test(version)) {
+      throw new Error(`--version must match X.Y.Z (got: ${version})`);
+    }
+    return `${RAW_BASE_NO_REF}/skill-v${version}`;
   }
-  if (!ALLOWED_BASE_URL_HOSTS.has(u.hostname)) {
-    throw new Error(`AZURE_ARCH_SKILL_BASE_URL host '${u.hostname}' not in allow-list (${[...ALLOWED_BASE_URL_HOSTS].join(", ")})`);
-  }
-  if (!u.pathname.startsWith(ALLOWED_BASE_URL_PATH_PREFIX)) {
-    throw new Error(`AZURE_ARCH_SKILL_BASE_URL path must start with ${ALLOWED_BASE_URL_PATH_PREFIX}`);
-  }
-  process.stderr.write(`warn: AZURE_ARCH_SKILL_BASE_URL override active: ${override}\n`);
-  return override.replace(/\/$/, "");
+
+  return DEFAULT_BASE_RAW_URL;
 }
 
 let envTargetRootWarned = false;
@@ -270,6 +297,90 @@ export function stripFrontmatter(md: string): string {
   const text = md.replace(/^﻿/, "");
   const match = text.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
   return match ? text.slice(match[0].length) : text;
+}
+
+/**
+ * Test whether an icons-tag semver satisfies the SKILL.md's `requires_icons`
+ * constraint. Hand-rolled to keep the runtime dep tree minimal (commander +
+ * nothing else; pulling in `semver` would add transitive deps for a feature
+ * that today only needs `>=X.Y.Z` matching).
+ *
+ * Supported constraint forms:
+ *   - "X.Y.Z"     (exact match)
+ *   - ">=X.Y.Z"   (tag >= constraint)
+ *   - "^X.Y.Z"    (same major, tag >= constraint — npm caret semantics)
+ *   - "~X.Y.Z"    (same major.minor, tag.patch >= constraint.patch)
+ *
+ * Throws on any other input. The project's SKILL.md frontmatter only ships
+ * `>=X.Y.Z` today; the other 3 forms exist for future-proofing.
+ *
+ * Numeric encoding `maj * 1e6 + min * 1e3 + pat` rules out individual segments
+ * >= 1000, which is fine for icons semver in the foreseeable future.
+ */
+export function satisfiesRequiresIcons(constraint: string, iconsSemver: string): boolean {
+  const tagParts = iconsSemver.split(".").map(Number);
+  if (tagParts.length !== 3 || tagParts.some(n => isNaN(n))) {
+    throw new Error(`icons semver malformed: ${iconsSemver}`);
+  }
+  const [tagMaj, tagMin, tagPat] = tagParts;
+
+  const trimmed = constraint.trim().replace(/^["']|["']$/g, "");
+  const m = trimmed.match(/^(>=|\^|~|)(\d+)\.(\d+)\.(\d+)$/);
+  if (!m) {
+    throw new Error(`requires_icons constraint form not supported: ${constraint}`);
+  }
+  const [, op, majS, minS, patS] = m;
+  const maj = Number(majS);
+  const min = Number(minS);
+  const pat = Number(patS);
+  const tag = tagMaj * 1e6 + tagMin * 1e3 + tagPat;
+  const ref = maj * 1e6 + min * 1e3 + pat;
+
+  if (op === "")    return tag === ref;
+  if (op === ">=")  return tag >= ref;
+  if (op === "^")   return tagMaj === maj && tag >= ref;
+  if (op === "~")   return tagMaj === maj && tagMin === min && tagPat >= pat;
+  throw new Error(`unreachable constraint op: ${op}`);
+}
+
+/**
+ * Verify the icon set the skill bundle references is reachable AND its
+ * semver satisfies SKILL.md's requires_icons.
+ *
+ * - Always: HEAD the canary icon URL (`CANARY_ICON_PATH` at the current base).
+ *   Unreachable → throw with the URL in the message.
+ * - If `requestedVersion` is provided: additionally infer the icons-tag from
+ *   `manifest.requires_icons`'s lower bound and assert it satisfies the
+ *   constraint via `satisfiesRequiresIcons`. The inference is intentionally
+ *   simple: `requires_icons` lower bound IS the icons-tag the skill was
+ *   built against. Future work: record an exact `icons_version` field in
+ *   `manifest.json` and read it here directly.
+ */
+export async function verifyIconsAvailability(
+  base: string,
+  manifest: Manifest,
+  requestedVersion: string | undefined,
+): Promise<void> {
+  const requires = manifest.requires_icons;
+
+  const canaryUrl = `${base}/${CANARY_ICON_PATH}`;
+  const reachable = await headOk(canaryUrl);
+  if (!reachable) {
+    throw new Error(`icon-set unreachable - HEAD ${canaryUrl} failed (skill declares requires_icons=${requires}; this release verifies reachability only, strict semver match planned)`);
+  }
+
+  if (!requestedVersion) {
+    return;
+  }
+
+  const lowerMatch = requires.match(/(\d+\.\d+\.\d+)/);
+  if (!lowerMatch) {
+    throw new Error(`SKILL.md requires_icons has no parseable lower bound: ${requires}`);
+  }
+  const iconsTagSemver = lowerMatch[1];
+  if (!satisfiesRequiresIcons(requires, iconsTagSemver)) {
+    throw new Error(`requires_icons constraint ${requires} not satisfied by inferred icons tag ${iconsTagSemver}`);
+  }
 }
 
 export async function withFatalReturn(fn: () => Promise<number>): Promise<number> {
