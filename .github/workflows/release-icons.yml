@@ -1,0 +1,41 @@
+name: release-icons
+
+# Triggered by 'icons-v*' tag pushes. Creates a GitHub Release with zipped
+# dist/Azure/** and dist/Fabric/** as assets. No npm publish — icons are
+# a content release, not a package. Removes the manual-tag SPOF that
+# --version=X.Y.Z previously depended on.
+
+on:
+  push:
+    tags:
+      - 'icons-v*'
+
+permissions:
+  contents: write   # gh release create
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Build asset zips
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#icons-v}"
+          zip -r "dist-azure-icons-v${VERSION}.zip"  dist/Azure/
+          zip -r "dist-fabric-icons-v${VERSION}.zip" dist/Fabric/
+          ls -la dist-*.zip
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#icons-v}"
+          gh release create "${GITHUB_REF_NAME}" \
+            "dist-azure-icons-v${VERSION}.zip" \
+            "dist-fabric-icons-v${VERSION}.zip" \
+            --title "Icons v${VERSION}" \
+            --notes "Icon set release v${VERSION}. Azure + Fabric zips attached. Built automatically by release-icons.yml."
