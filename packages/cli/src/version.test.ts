@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { baseUrl, satisfiesRequiresIcons } from "./adapters/_shared";
+import { baseUrl, satisfiesRequiresIcons, verifyIconsAvailability, Manifest } from "./adapters/_shared";
 import { claudeCodeAdapter } from "./adapters/claude-code";
 import { provenanceMarker, PROVENANCE_RE } from "./adapters/cursor";
 import {
@@ -114,6 +114,77 @@ test("Cursor: PROVENANCE_RE parses what provenanceMarker writes", () => {
   assert.ok(match, `PROVENANCE_RE failed to parse marker: ${marker}`);
   assert.equal(match![1], "1.2.3");
   assert.equal(match![2], ">=0.1.0");
+});
+
+// ---- verifyIconsAvailability: icons_version field handling ----
+
+function makeManifest(overrides: Partial<Manifest> = {}): Manifest {
+  return {
+    name: "azure-architecture-diagram",
+    version: "0.8.0",
+    requires_icons: ">=0.2.2",
+    icons_version: "0.2.2",
+    files: [{ src: "dist/skill/SKILL.md", dest: "SKILL.md", role: "skill" }],
+    ...overrides,
+  };
+}
+
+// All three tests below mock fetch to make HEAD canary succeed; the test
+// substance is what verifyIconsAvailability does AFTER that succeeds.
+function mockHeadOk(): { restore: () => void } {
+  const real = globalThis.fetch;
+  globalThis.fetch = (async (_url: any, init?: any) => {
+    const method = (init?.method ?? "GET").toUpperCase();
+    if (method === "HEAD") return new Response(null, { status: 200 });
+    return new Response("unexpected", { status: 500 });
+  }) as typeof fetch;
+  return { restore: () => { globalThis.fetch = real; } };
+}
+
+test("verifyIconsAvailability: prefers manifest.icons_version when present", async () => {
+  const mock = mockHeadOk();
+  try {
+    await verifyIconsAvailability(
+      "https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/skill-v0.8.0",
+      makeManifest({ requires_icons: ">=0.2.2", icons_version: "0.2.2" }),
+      "0.8.0",
+    );
+    // No throw → field path was used + satisfied the constraint.
+  } finally {
+    mock.restore();
+  }
+});
+
+test("verifyIconsAvailability: throws when icons_version mismatches requires_icons", async () => {
+  const mock = mockHeadOk();
+  try {
+    await assert.rejects(
+      () => verifyIconsAvailability(
+        "https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/skill-v0.8.0",
+        makeManifest({ requires_icons: ">=0.3.0", icons_version: "0.2.2" }),
+        "0.8.0",
+      ),
+      /not satisfied by manifest icons_version 0\.2\.2/,
+    );
+  } finally {
+    mock.restore();
+  }
+});
+
+test("verifyIconsAvailability: falls back to lower-bound when icons_version absent", async () => {
+  const mock = mockHeadOk();
+  try {
+    const m = makeManifest({ requires_icons: ">=0.2.2" });
+    delete m.icons_version;
+    await verifyIconsAvailability(
+      "https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/skill-v0.5.0",
+      m,
+      "0.5.0",
+    );
+    // No throw → fallback path (pre-1.6.5 bundle) trivially satisfies.
+  } finally {
+    mock.restore();
+  }
 });
 
 // ---- --version integration: claude-code install asserts the fetched URL is tag-pinned ----
