@@ -43,6 +43,10 @@ export interface Manifest {
   name: string;
   version: string;
   requires_icons: string;
+  // Exact icons-vX.Y.Z tag this skill bundle was built against. Optional:
+  // bundles built before this field landed (skill-v0.7.x and earlier) omit
+  // it; the CLI falls back to the requires_icons lower-bound inference.
+  icons_version?: string;
   files: ManifestFile[];
 }
 
@@ -235,6 +239,11 @@ export async function fetchManifest(base: string): Promise<Manifest> {
       throw new Error(`manifest ${url} missing required field: ${key}`);
     }
   }
+  if (m.icons_version !== undefined) {
+    if (typeof m.icons_version !== "string" || !/^\d+\.\d+\.\d+$/.test(m.icons_version)) {
+      throw new Error(`manifest ${url} icons_version malformed (must match X.Y.Z): ${String(m.icons_version)}`);
+    }
+  }
   if (!Array.isArray(m.files) || m.files.length === 0) {
     throw new Error(`manifest ${url} files[] missing or empty`);
   }
@@ -357,14 +366,16 @@ export function satisfiesRequiresIcons(constraint: string, iconsSemver: string):
  * Verify the icon set the skill bundle references is reachable AND its
  * semver satisfies SKILL.md's requires_icons.
  *
- * - Always: HEAD the canary icon URL (`CANARY_ICON_PATH` at the current base).
- *   Unreachable → throw with the URL in the message.
- * - If `requestedVersion` is provided: additionally infer the icons-tag from
- *   `manifest.requires_icons`'s lower bound and assert it satisfies the
- *   constraint via `satisfiesRequiresIcons`. The inference is intentionally
- *   simple: `requires_icons` lower bound IS the icons-tag the skill was
- *   built against. Future work: record an exact `icons_version` field in
- *   `manifest.json` and read it here directly.
+ * Source of the icons-tag, in priority order:
+ *   1. `manifest.icons_version` — exact tag (preferred).
+ *   2. Lower-bound parse of `manifest.requires_icons` — fallback for
+ *      bundles published before the field landed (cannot be edited
+ *      retroactively on a tag).
+ *
+ * The fallback path makes the gate trivially pass by construction (a
+ * lower bound always satisfies its own constraint), preserving install
+ * behaviour for older tags. New bundles ship the field, so the gate
+ * becomes a real cross-track compatibility check going forward.
  */
 export async function verifyIconsAvailability(
   base: string,
@@ -376,20 +387,29 @@ export async function verifyIconsAvailability(
   const canaryUrl = `${base}/${CANARY_ICON_PATH}`;
   const reachable = await headOk(canaryUrl);
   if (!reachable) {
-    throw new Error(`icon-set unreachable - HEAD ${canaryUrl} failed (skill declares requires_icons=${requires}; this release verifies reachability only, strict semver match planned)`);
+    throw new Error(`icon-set unreachable - HEAD ${canaryUrl} failed (skill declares requires_icons=${requires})`);
   }
 
   if (!requestedVersion) {
     return;
   }
 
-  const lowerMatch = requires.match(/(\d+\.\d+\.\d+)/);
-  if (!lowerMatch) {
-    throw new Error(`SKILL.md requires_icons has no parseable lower bound: ${requires}`);
+  let iconsTagSemver: string;
+  let source: string;
+  if (manifest.icons_version) {
+    iconsTagSemver = manifest.icons_version;
+    source = `manifest icons_version`;
+  } else {
+    const lowerMatch = requires.match(/(\d+\.\d+\.\d+)/);
+    if (!lowerMatch) {
+      throw new Error(`SKILL.md requires_icons has no parseable lower bound: ${requires}`);
+    }
+    iconsTagSemver = lowerMatch[1];
+    source = `requires_icons lower-bound (bundle has no icons_version field)`;
   }
-  const iconsTagSemver = lowerMatch[1];
+
   if (!satisfiesRequiresIcons(requires, iconsTagSemver)) {
-    throw new Error(`requires_icons constraint ${requires} not satisfied by inferred icons tag ${iconsTagSemver}`);
+    throw new Error(`requires_icons constraint ${requires} not satisfied by ${source} ${iconsTagSemver}`);
   }
 }
 

@@ -9,6 +9,7 @@ import * as os from "node:os";
 
 export const SYNTHETIC_VERSION = "0.5.0";
 export const SYNTHETIC_REQUIRES_ICONS = ">=0.2.2";
+export const SYNTHETIC_ICONS_VERSION = "0.2.2";
 
 export const SYNTHETIC_SKILL_MD = [
   "---",
@@ -29,6 +30,7 @@ export const SYNTHETIC_MANIFEST = {
   name: "azure-architecture-diagram",
   version: SYNTHETIC_VERSION,
   requires_icons: SYNTHETIC_REQUIRES_ICONS,
+  icons_version: SYNTHETIC_ICONS_VERSION,
   files: [
     { src: "dist/skill/SKILL.md", dest: "SKILL.md", role: "skill" },
     { src: "dist/skill/examples/01-context.puml", dest: "examples/01-context.puml", role: "example" },

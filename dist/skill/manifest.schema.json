@@ -5,7 +5,7 @@
   "description": "Bundle file list + version metadata for the skill shipped to AI coding agents (Claude Code, Codex CLI, Cursor). Adapters fetch this file first and iterate `files` to install each entry.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["name", "version", "requires_icons", "files"],
+  "required": ["name", "version", "requires_icons", "icons_version", "files"],
   "properties": {
     "$schema": {
       "type": "string",
@@ -23,6 +23,11 @@
     "requires_icons": {
       "type": "string",
       "description": "SemVer range of compatible icon-set releases (e.g. '>=0.2.2'). CLI verifies before install."
+    },
+    "icons_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Exact icons-vX.Y.Z tag this skill bundle was built against. CLI matches it against `requires_icons` at install time. Bundles built before this field landed may omit it; the CLI falls back to inferring the lower bound of `requires_icons`."
     },
     "files": {
       "type": "array",
