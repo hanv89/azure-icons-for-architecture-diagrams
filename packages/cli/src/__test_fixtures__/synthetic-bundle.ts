@@ -108,7 +108,6 @@ export function rmTmpdir(dir: string): void {
 // IMPORTANT: do NOT silence stdout. Hijacking process.stdout.write inside a
 // node:test test confuses the runner's buffered reporter — other tests' ✔
 // lines get eaten by the capture buffer and silently drop from the count.
-// We learned this the hard way in Phase 1.3.
 export function silenceStderr(): { restore: () => void } {
   const orig = process.stderr.write.bind(process.stderr);
   (process.stderr.write as any) = (_chunk: any) => true;
