@@ -5,7 +5,8 @@ name: leak-check
 # tags, and organization-internal terms. Runs on every PR + push to main.
 #
 # The regex is intentionally broad — false positives are easier to whitelist
-# than leaks are to recall after they ship.
+# than leaks are to recall after they ship. A self-test runs first to ensure
+# the regex still catches each pattern category (tests/leak-fixtures.txt).
 
 on:
   pull_request:
@@ -15,11 +16,28 @@ on:
 permissions:
   contents: read
 
+env:
+  PATTERN: 'Phase[ -]?[0-9]+\.|D-[0-9]{3}|\bR[0-9]{2,3}\b|sun group|sungroup|phú quốc|head of tech'
+
 jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Self-test — regex must match every known-bad pattern fixture
+        run: |
+          set -uo pipefail
+          # Each non-comment line in the fixture is a string the regex MUST flag.
+          # If any non-comment line stops matching, fail loud so the regex
+          # cannot silently drop a pattern.
+          MISSED=$(grep -vE '^\s*(#|$)' tests/leak-fixtures.txt | grep -vE "$PATTERN" || true)
+          if [ -n "$MISSED" ]; then
+            echo "FAIL — leak regex no longer catches these fixture lines:"
+            echo "$MISSED"
+            exit 1
+          fi
+          echo "PASS — leak regex catches every fixture line."
 
       - name: Grep for internal-only tokens
         run: |
@@ -29,13 +47,13 @@ jobs:
           #   D-021 / D-013b — decision-log entries
           #   R30            — review-finding shorthand
           #   sun group / phú quốc / head of tech — organization-internal terms
-          PATTERN='Phase[ -]?[0-9]+\.|D-[0-9]{3}|\bR[0-9]{2,3}\b|sun group|sungroup|phú quốc|head of tech'
 
           # -I excludes binary files (PNG icon filenames like
           # "AzureMachineLearningStudioWebServicePlan(m).png" otherwise trigger
           # the \bR[0-9]+\b alternative via binary fingerprint matches).
           MATCHES=$(git grep -InE "$PATTERN" \
                     -- ':!.github/workflows/leak-check.yml' \
+                    ':!tests/leak-fixtures.txt' \
                     || true)
 
           if [ -n "$MATCHES" ]; then

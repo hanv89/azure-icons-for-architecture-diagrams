@@ -3,15 +3,7 @@
 import { Command } from "commander";
 import pkg from "../package.json";
 import { ADAPTERS, AgentName, ALL_TARGET, SUPPORTED_AGENTS, SUPPORTED_TARGETS } from "./adapters/registry";
-import { Adapter } from "./adapters/types";
 import { runOverAll, Subcommand } from "./all";
-
-function pickAdapter(agent: string): Adapter {
-  if (!(agent in ADAPTERS)) {
-    throw new Error(`unknown agent: ${agent} (supported: ${SUPPORTED_TARGETS.join(", ")})`);
-  }
-  return ADAPTERS[agent as AgentName];
-}
 
 const program = new Command()
   .name("azure-arch-skill")
@@ -28,10 +20,8 @@ function defineSubcommand(name: Subcommand, description: string): void {
     .option("--target <dir>", "override target directory (validation use)")
     .option("--version <semver>", "pin to a specific skill version (X.Y.Z); default = latest from main")
     .action(async (opts) => {
-      // Set process.exitCode so any pending async cleanup (file handles, the
-      // override-warning stderr write) drains before the event loop empties.
-      // Both this top-level path and adapter-internal failures emit a single
-      // '^fatal: ' prefix line on stderr — log-parsers can rely on the prefix.
+      // Validate --version pre-dispatch as defense-in-depth; baseUrl() in
+      // _shared.ts also rejects malformed values when it builds the URL.
       if (opts.version !== undefined && !VERSION_RE.test(opts.version)) {
         throw new Error(`--version must match X.Y.Z (got: ${opts.version})`);
       }
@@ -41,9 +31,9 @@ function defineSubcommand(name: Subcommand, description: string): void {
         return;
       }
       if (!SUPPORTED_AGENTS.includes(opts.agent)) {
-        throw new Error(`unknown agent: ${opts.agent} (supported: ${SUPPORTED_TARGETS.join(", ")})`);
+        throw new Error(`unknown agent: ${opts.agent} (supported: ${SUPPORTED_AGENTS.join(", ")})`);
       }
-      process.exitCode = await pickAdapter(opts.agent)[name](optsForAdapter);
+      process.exitCode = await ADAPTERS[opts.agent as AgentName][name](optsForAdapter);
     });
 }
 
@@ -52,6 +42,11 @@ defineSubcommand("uninstall", "Remove a previously installed skill.");
 defineSubcommand("update",    "Update an installed skill to the latest version.");
 defineSubcommand("list",      "List installed skills and their versions.");
 
+// Top-level catch: setting process.exitCode (instead of process.exit(1)) lets
+// any pending async cleanup (file handles, the override-warning stderr write)
+// drain before the event loop empties. Both this path and adapter-internal
+// failures emit a single '^fatal: ' prefix line on stderr — log-parsers can
+// rely on the prefix.
 program.parseAsync(process.argv).catch(err => {
   process.stderr.write(`fatal: ${err instanceof Error ? err.message : String(err)}\n`);
   process.exit(1);

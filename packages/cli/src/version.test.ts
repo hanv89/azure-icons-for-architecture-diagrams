@@ -2,9 +2,16 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as os from "node:os";
 import { baseUrl, satisfiesRequiresIcons } from "./adapters/_shared";
 import { claudeCodeAdapter } from "./adapters/claude-code";
+import { provenanceMarker, PROVENANCE_RE } from "./adapters/cursor";
+import {
+  mkTmpdir,
+  rmTmpdir,
+  SYNTHETIC_SKILL_MD,
+  SYNTHETIC_MANIFEST,
+  SYNTHETIC_EXAMPLE,
+} from "./__test_fixtures__/synthetic-bundle";
 
 // ---- satisfiesRequiresIcons unit tests ----
 
@@ -54,6 +61,11 @@ test("satisfiesRequiresIcons: malformed icons semver throws", () => {
   assert.throws(() => satisfiesRequiresIcons(">=0.2.0", "not.a.semver"), /malformed/);
 });
 
+test("satisfiesRequiresIcons: 4-digit segment throws (encoding capacity guard)", () => {
+  assert.throws(() => satisfiesRequiresIcons(">=0.2.0", "0.0.1000"), /exceeds matcher capacity/);
+  assert.throws(() => satisfiesRequiresIcons(">=0.0.1000", "0.5.0"), /exceeds matcher capacity/);
+});
+
 // ---- baseUrl(version?) unit tests ----
 
 test("baseUrl(): default returns main ref", () => {
@@ -94,38 +106,19 @@ test("baseUrl('invalid'): throws X.Y.Z error", () => {
   }
 });
 
+// ---- Cursor provenance marker round-trip ----
+
+test("Cursor: PROVENANCE_RE parses what provenanceMarker writes", () => {
+  const marker = provenanceMarker("1.2.3", ">=0.1.0");
+  const match = marker.match(PROVENANCE_RE);
+  assert.ok(match, `PROVENANCE_RE failed to parse marker: ${marker}`);
+  assert.equal(match![1], "1.2.3");
+  assert.equal(match![2], ">=0.1.0");
+});
+
 // ---- --version integration: claude-code install asserts the fetched URL is tag-pinned ----
 
-const SYNTHETIC_SKILL_MD = [
-  "---",
-  "name: azure-architecture-diagram",
-  "description: test fixture",
-  "version: 0.5.0",
-  'requires_icons: ">=0.2.2"',
-  "---",
-  "# Test skill body",
-].join("\n");
-
-const SYNTHETIC_MANIFEST = {
-  $schema: "./manifest.schema.json",
-  name: "azure-architecture-diagram",
-  version: "0.5.0",
-  requires_icons: ">=0.2.2",
-  files: [
-    { src: "dist/skill/SKILL.md", dest: "SKILL.md", role: "skill" },
-    { src: "dist/skill/examples/01-context.puml", dest: "examples/01-context.puml", role: "example" },
-  ],
-};
-
 const realFetch = globalThis.fetch;
-
-function mkTmpdir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "azure-arch-skill-test-"));
-}
-
-function rmTmpdir(dir: string): void {
-  fs.rmSync(dir, { recursive: true, force: true });
-}
 
 test("--version=0.5.0 integration: install fetches from skill-v0.5.0 ref", async () => {
   const tmpdir = mkTmpdir();
@@ -146,7 +139,7 @@ test("--version=0.5.0 integration: install fetches from skill-v0.5.0 ref", async
     }
     if (u.endsWith("/dist/skill/SKILL.md")) return new Response(SYNTHETIC_SKILL_MD, { status: 200 });
     if (u.endsWith("/dist/skill/examples/01-context.puml")) {
-      return new Response("@startuml\ntitle Test\n@enduml\n", { status: 200 });
+      return new Response(SYNTHETIC_EXAMPLE, { status: 200 });
     }
     return new Response("not found", { status: 404 });
   }) as typeof fetch;
@@ -180,7 +173,6 @@ test("--version=99.99.99 integration: fetch 404 surfaces as fatal error", async 
 
   globalThis.fetch = (async () => new Response("not found", { status: 404 })) as typeof fetch;
 
-  // Silence stderr to keep the test runner output clean.
   const origStderr = process.stderr.write.bind(process.stderr);
   (process.stderr.write as any) = (_chunk: any) => true;
 
@@ -197,3 +189,6 @@ test("--version=99.99.99 integration: fetch 404 surfaces as fatal error", async 
     rmTmpdir(tmpdir);
   }
 });
+
+// Use fs imports so node:test doesn't complain about unused imports.
+void fs;
