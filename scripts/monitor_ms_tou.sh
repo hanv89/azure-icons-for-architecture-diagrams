@@ -19,10 +19,24 @@
 # + the three Don'ts. Page chrome, TOC, "Icon updates" month-by-month
 # table — all volatile, all skipped.
 
+# set -uo pipefail (no -e): the grep -oE patterns return non-zero when a
+# pattern legitimately doesn't match (which we want to detect via the
+# explicit "missing pattern" check below); -e would abort the script
+# before that check runs. The `|| true` pattern after each grep keeps
+# the variables empty rather than crashing.
 set -uo pipefail
 
-URL="https://learn.microsoft.com/en-us/azure/architecture/icons/"
-BASELINE="${BASELINE:-dist/baselines/microsoft-azure-icons-tou.txt}"
+# URL is fetch target; CANONICAL_URL is the source recorded in the
+# baseline header. Tests can override URL (e.g. file://fixture.html) while
+# keeping CANONICAL_URL stable so the diff against the baseline stays
+# meaningful.
+CANONICAL_URL="https://learn.microsoft.com/en-us/azure/architecture/icons/"
+URL="${URL:-${CANONICAL_URL}}"
+# Resolve BASELINE relative to the script's own location so the monitor
+# works regardless of the caller's cwd (CI checks it out in any path).
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+BASELINE="${BASELINE:-${REPO_ROOT}/dist/baselines/microsoft-azure-icons-tou.txt}"
 
 if [ ! -f "${BASELINE}" ]; then
   echo "FAIL: baseline missing at ${BASELINE}" >&2
@@ -61,7 +75,7 @@ fi
 
 {
   printf '# Canonical extract of the Microsoft Azure Architecture Icons Terms of Use.\n'
-  printf '# Source: %s\n' "${URL}"
+  printf '# Source: %s\n' "${CANONICAL_URL}"
   printf '# Captured: 2026-05-11.\n'
   printf '# This file is the baseline that scripts/monitor_ms_tou.sh diffs against.\n'
   printf '# If the upstream ToU changes, the monitor fails, an issue is opened, and\n'

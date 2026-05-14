@@ -6,7 +6,6 @@ import {
   baseUrl,
   fetchManifest,
   fetchText,
-  fetchWithTimeout,
   parseFrontmatter,
   safeResolveTarget,
   stripFrontmatter,
@@ -27,14 +26,13 @@ import {
 //
 // See https://cursor.com/docs/context/rules for the format reference.
 
-export { fetchWithTimeout, parseFrontmatter };
-
 const RULE_BASENAME = "azure-arch-skill.mdc";
 
 const RULE_DESCRIPTION =
   "Use this rule when drawing Microsoft Azure or Microsoft Fabric architecture diagrams using PlantUML. " +
-  "Triggers on \"draw Azure architecture\", \"create deployment diagram\", \"Lakehouse + Notebook + Warehouse diagram\", " +
-  "\"vẽ Azure\", \"PlantUML diagram for [project]\".";
+  "Triggers on \"draw Azure architecture\", \"draw Azure diagram\", \"create deployment diagram\", " +
+  "\"Lakehouse + Notebook + Warehouse diagram\", \"PlantUML diagram for [project]\". " +
+  "Also triggers on the Vietnamese phrase \"vẽ Azure\".";
 
 // Cursor's rule discovery is per-project: <cwd>/.cursor/rules/*.mdc is the
 // canonical install location, so the team picks up the rule via the project's
@@ -151,7 +149,29 @@ async function uninstall(opts: UninstallOptions): Promise<number> {
 }
 
 async function update(opts: UpdateOptions): Promise<number> {
-  return install({ ...opts, overwrite: true });
+  return withFatalReturn(async () => {
+    const targetDir = await resolveTarget(opts.target ?? defaultTarget());
+    const ruleFile = path.join(targetDir, RULE_BASENAME);
+    const base = baseUrl(opts.version);
+
+    // Already-at-version short-circuit (parity with the folder-install
+    // adapters). Read the installed .mdc, extract version from the
+    // provenance marker, compare to the upstream manifest's version.
+    const probe = await isOurRuleFile(ruleFile);
+    if (probe.ours && probe.version) {
+      const manifest = await fetchManifest(base);
+      if (manifest.name !== SKILL_NAME) {
+        throw new Error(`manifest name mismatch: expected '${SKILL_NAME}', got '${manifest.name}'. CLI and bundle are out of sync.`);
+      }
+      if (probe.version === manifest.version) {
+        process.stdout.write(`${SKILL_NAME} already at version ${manifest.version} (no-op)\n`);
+        return 0;
+      }
+    }
+
+    // Otherwise, overwriting install.
+    return install({ ...opts, overwrite: true });
+  });
 }
 
 async function list(opts: ListOptions): Promise<number> {

@@ -384,5 +384,72 @@ test("uninstall: legacy install (no persisted manifest) falls back to rm -rf", a
   }
 });
 
+// ---- Cursor adapter idempotency parity ----
+
+test("cursor: update already-at-version emits no-op, does not overwrite", async () => {
+  const { cursorAdapter } = await import("./adapters/cursor");
+  const tmpdir = mkTmpdir();
+  const target = path.join(tmpdir, ".cursor", "rules");
+  const prevHome = process.env.HOME;
+  const prevCwd = process.cwd();
+  const prevEnv = process.env.AZURE_ARCH_SKILL_TARGET_ROOT;
+  const prevBase = process.env.AZURE_ARCH_SKILL_BASE_URL;
+  process.env.HOME = tmpdir;
+  process.env.AZURE_ARCH_SKILL_TARGET_ROOT = tmpdir;
+  process.chdir(tmpdir);
+  delete process.env.AZURE_ARCH_SKILL_BASE_URL;
+
+  // First install via the standard mock.
+  const installMock = (await import("./__test_fixtures__/synthetic-bundle")).installFetchMock();
+  try {
+    await cursorAdapter.install({ target });
+  } finally {
+    installMock.restore();
+  }
+
+  // Now a second fetch-mock counting GETs.
+  const realFetchInner = globalThis.fetch;
+  const fetchedUrls: string[] = [];
+  globalThis.fetch = (async (url: any, init?: any) => {
+    const u = url.toString();
+    const method = (init?.method ?? "GET").toUpperCase();
+    fetchedUrls.push(`${method} ${u}`);
+    if (method === "HEAD") return new Response(null, { status: 200 });
+    if (u.endsWith("/dist/skill/manifest.json")) {
+      return new Response(JSON.stringify(SYNTHETIC_MANIFEST), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (u.endsWith("/dist/skill/SKILL.md")) {
+      return new Response(SYNTHETIC_SKILL_MD, { status: 200 });
+    }
+    return new Response("not found", { status: 404 });
+  }) as typeof fetch;
+
+  const origStdout = process.stdout.write.bind(process.stdout);
+  let captured = "";
+  (process.stdout.write as any) = (chunk: any) => { captured += typeof chunk === "string" ? chunk : chunk.toString(); return true; };
+
+  try {
+    const exit = await cursorAdapter.update({ target });
+    process.stdout.write = origStdout as any;
+    assert.equal(exit, 0);
+    assert.match(captured, /already at version 0\.5\.0 \(no-op\)/);
+    // No SKILL.md GET during update — only manifest.json (and no HEADs because
+    // verifyIconsAvailability is only called in install, not update no-op).
+    const skillMdGets = fetchedUrls.filter(u => u.startsWith("GET ") && u.endsWith("/dist/skill/SKILL.md"));
+    assert.equal(skillMdGets.length, 0, `expected zero SKILL.md GETs during Cursor no-op update, got: ${JSON.stringify(skillMdGets)}`);
+  } finally {
+    process.stdout.write = origStdout as any;
+    globalThis.fetch = realFetchInner;
+    process.chdir(prevCwd);
+    if (prevHome === undefined) delete process.env.HOME;
+    else process.env.HOME = prevHome;
+    if (prevEnv === undefined) delete process.env.AZURE_ARCH_SKILL_TARGET_ROOT;
+    else process.env.AZURE_ARCH_SKILL_TARGET_ROOT = prevEnv;
+    if (prevBase === undefined) delete process.env.AZURE_ARCH_SKILL_BASE_URL;
+    else process.env.AZURE_ARCH_SKILL_BASE_URL = prevBase;
+    rmTmpdir(tmpdir);
+  }
+});
+
 // Use fs imports so node:test doesn't complain about unused imports.
 void fs;

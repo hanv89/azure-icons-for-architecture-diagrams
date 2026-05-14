@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseFrontmatter, fetchWithTimeout } from "./claude-code";
+import { parseFrontmatter, fetchWithTimeout } from "./_shared";
 
 test("parseFrontmatter: BOM-prefixed input parses correctly", () => {
   const md = "﻿---\nname: foo\nversion: 1.2.3\nrequires_icons: \">=0.1.0\"\n---\n# body";

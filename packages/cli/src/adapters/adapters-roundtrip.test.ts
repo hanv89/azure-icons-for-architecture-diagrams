@@ -4,7 +4,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { Adapter } from "./types";
 import { ADAPTERS } from "./registry";
-import { parseFrontmatter } from "./claude-code";
+import { parseFrontmatter } from "./_shared";
 import { installFetchMock, mkTmpdir, rmTmpdir, SYNTHETIC_VERSION } from "../__test_fixtures__/synthetic-bundle";
 
 // ---- Adapter round-trip (install → list → uninstall) ----

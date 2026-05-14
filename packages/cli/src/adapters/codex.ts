@@ -1,13 +1,11 @@
 import * as path from "node:path";
 import * as os from "node:os";
 import { Adapter } from "./types";
-import { fetchWithTimeout, makeFolderInstallAdapter, parseFrontmatter } from "./_shared";
+import { makeFolderInstallAdapter } from "./_shared";
 
 // Codex CLI discovers user-installed skills at $CODEX_HOME/skills/<name>/SKILL.md,
 // defaulting to ~/.codex/skills/ when CODEX_HOME is unset. Verified against the
 // Codex Rust binary's bundled prompt strings. See https://github.com/openai/codex.
-
-export { fetchWithTimeout, parseFrontmatter };
 
 function codexRootDir(): string {
   const explicit = process.env.CODEX_HOME;
