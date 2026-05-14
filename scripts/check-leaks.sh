@@ -88,7 +88,10 @@ surface_matches=""
 scan_content_files() {
   local files="$1"
   if [ -z "${files}" ]; then return 0; fi
-  echo "${files}" | xargs grep -InE "${CONTENT_PATTERN}" 2>/dev/null | grep -vE "${EXCLUDED_PATH_GREP}" || true
+  # -H forces the filename prefix even when grep is handed a single file
+  # (or xargs splits into single-file batches) — without it EXCLUDED_PATH_GREP
+  # can't match and the leak-check.yml / check-leaks.sh exclusions silently fail.
+  echo "${files}" | xargs grep -HInE "${CONTENT_PATTERN}" 2>/dev/null | grep -vE "${EXCLUDED_PATH_GREP}" || true
 }
 
 case "${mode}" in
