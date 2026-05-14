@@ -8,13 +8,30 @@ Two ways to use these icons. Pick one.
 
 ### A — Install the AI skill (recommended)
 
-For Claude Code:
+Install the skill for your AI coding agent with one `npx` command:
 
 ```bash
+# Claude Code
 npx @hanv89/azure-arch-skill@latest install --agent=claude-code
+
+# Codex CLI
+npx @hanv89/azure-arch-skill@latest install --agent=codex
+
+# Cursor
+npx @hanv89/azure-arch-skill@latest install --agent=cursor
 ```
 
-Then in a new Claude Code session, prompt:
+Where each agent installs the skill:
+
+| Agent | Install location | Model |
+|---|---|---|
+| Claude Code | `~/.claude/skills/azure-architecture-diagram/` | per-user |
+| Codex CLI | `~/.codex/skills/azure-architecture-diagram/` | per-user |
+| Cursor | `<cwd>/.cursor/rules/azure-arch-skill.mdc` | per-project — see [CLI reference](#cli-reference) |
+
+To install for every supported agent at once, use `--agent=all` (see [CLI reference](#cli-reference)).
+
+Then in a new agent session (the example below uses Claude Code), prompt:
 
 > Draw a system architecture diagram for an Azure AKS app feeding a Microsoft Fabric data plane (Lakehouse + Power BI).
 
@@ -117,6 +134,52 @@ Browse [`dist/Azure/`](dist/Azure/) and [`dist/Fabric/png/`](dist/Fabric/png/) o
 
 Azure filenames containing `(` or `)` (the monochrome variants) must be URL-encoded as `%28` / `%29` when used inside a `<img:URL>` reference. Fabric filenames use `snake_case` and need no encoding.
 
+## CLI reference
+
+`npx @hanv89/azure-arch-skill@latest <command> [flags]`
+
+### Commands
+
+| Command | What it does |
+|---|---|
+| `install` | Fetches the skill bundle and writes it to the agent's skill folder. |
+| `update` | Re-fetches and overwrites — but is an idempotent no-op when the installed version already matches the source. |
+| `uninstall` | Removes the skill. Manifest-scoped: only the files the installer wrote are removed; anything you added alongside is left in place. |
+| `list` | Reports which agents currently have the skill installed and at what version. |
+
+### Flags
+
+**`--agent=<claude-code\|codex\|cursor\|all>`** — which agent to act on. `--agent=all` fans out across all three:
+
+- `install` / `update` with `--agent=all` are **transactional** — if one agent fails, the already-applied agents are rolled back, so you never end up half-installed.
+- `uninstall` / `list` with `--agent=all` are **best-effort** — a failure on one agent does not stop the others.
+- `install --agent=all` **refuses** as soon as it finds an agent that already has the skill, rather than silently skipping or overwriting. If your agents are in mixed states (some installed, some not), install them one at a time with explicit `--agent=` values.
+
+**`--version=X.Y.Z`** — pins the bundle source to a specific `skill-vX.Y.Z` release tag. Without it, the CLI resolves the bundle from `main` (the latest published content).
+
+**`--target=<path>`** — overrides the directory the skill is written to.
+
+> **Cursor installs per-project, not per-user.** Unlike Claude Code and Codex CLI — which install into a per-user folder under your home directory — Cursor's default target is `<current working directory>/.cursor/rules/`. This is intentional: Cursor rules are scoped to a workspace, so the skill belongs with the project you run the command in. Run the install from your project root, or pass `--target=<path>` to point somewhere else.
+
+## Troubleshooting
+
+**An icon renders as a broken image.** Two common causes:
+
+- A `!define` macro was used for the URL. PlantUML does not expand macros inside the `<img:>` token — paste the full literal URL (see the note in *Hand-write `<img:URL>`* above).
+- The icon is an Azure monochrome variant whose filename contains `(` `)`. Those must be URL-encoded as `%28` / `%29` inside the `<img:URL>` reference. Fabric `snake_case` filenames need no encoding.
+
+**`install` reports an icons-version mismatch.** The skill declares a `requires_icons` range in its frontmatter, and the CLI checks it before installing. The message tells you which icon release the skill expects. The icon library and the skill ship on independent tracks (`icons-v*` and `skill-v*`) — pin a compatible pair, or update whichever side is behind.
+
+**The agent doesn't seem to use the skill after install.** Start a fresh agent session. Agents read their skill / rules folder at session start, so an install made during a running session is not picked up until you restart it.
+
+**Cursor: I can't find where the skill was installed.** Cursor installs per-project — the rule file is at `.cursor/rules/azure-arch-skill.mdc` *inside the directory you ran the command from*, not in a global location. Run `list --agent=cursor` from that same directory, or see the per-project note in the [CLI reference](#cli-reference).
+
+## Project status
+
+The icon library and the skill bundle are usable today — installed and in daily use by the team that maintains this repo. The two release tracks are independent: `icons-v*` for the icon library, `skill-v*` for the skill bundle plus its npm package, tied together by the skill's `requires_icons` range.
+
+The CLI flag surface is still stabilising toward an upcoming `1.0` release, at which point it will carry a SemVer compatibility commitment. Until then, treat flag names and output formatting as subject to change between minor versions — the install/usage paths documented above are stable in practice, but not yet contractually frozen.
+
 ## Icon sources
 
 This repository redistributes icons from two upstream tracks:
@@ -145,6 +208,13 @@ Verbatim from Microsoft (both Azure and Fabric tracks):
 - Use only for architectural diagrams, training materials, or documentation.
 
 The same list lives co-located with the icons at [`dist/Azure/USAGE-RULES.txt`](dist/Azure/USAGE-RULES.txt) and [`dist/Fabric/USAGE-RULES.txt`](dist/Fabric/USAGE-RULES.txt), where AI agents and scanners reading the icon directory are most likely to encounter it.
+
+## Contributing
+
+Bug reports and feature requests go to the [GitHub issue tracker](https://github.com/hanv89/azure-icons-for-architecture-diagrams/issues).
+
+- **Broken raw URL or missing icon** — open an issue with the exact `<img:URL>` that failed and where you used it (Confluence, `play.plantuml.com`, GitHub, …). Icon URLs are pinned by tag, so include the tag or `main`.
+- **Proposing a new icon** — note that every icon here is redistributed unchanged from a first-party MIT upstream (Azure-PlantUML for Azure, `@fabric-msft/svg-icons` for Fabric). New icons have to come from a comparable verified-license source — say which upstream covers the icon you want, and we can audit it.
 
 ## Footer
 
