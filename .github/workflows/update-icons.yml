@@ -13,6 +13,12 @@ on:
     - cron: '0 6 * * 1'
   workflow_dispatch: {}
 
+# Serialize: a manual dispatch + the Monday cron firing close together must
+# not collide on the chore/update-icons-<date> branch name.
+concurrency:
+  group: update-icons
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
@@ -71,7 +77,9 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -n "$(git status --porcelain dist/)" ]]; then
-            BR="chore/update-icons-$(date -u +%Y%m%d)"
+            # Branch name carries date + run_id so cron + manual dispatch on the
+            # same day don't collide, and a previous unmerged PR isn't blocked.
+            BR="chore/update-icons-$(date -u +%Y%m%d)-${{ github.run_id }}"
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git checkout -b "${BR}"
@@ -84,3 +92,16 @@ jobs:
           else
             echo "no upstream changes — nothing to commit"
           fi
+
+      - name: Watchdog issue on non-monitor-step failure
+        # Catch-all for steps the named monitor-watchdog above doesn't handle
+        # (build_*.sh, PR-open, etc). Skip when the monitor watchdog already
+        # fired (otherwise we'd create a duplicate issue for the same run).
+        if: failure() && steps.tou_monitor.outcome == 'success' && steps.health_monitor.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh issue create \
+            --title "watchdog: update-icons.yml failed ($(date -u +%Y-%m-%d))" \
+            --body "$(printf 'Workflow run: %s/%s/actions/runs/%s\n\nA step in update-icons.yml failed AFTER both upstream monitors passed. Triage the run logs.' "${{ github.server_url }}" "${{ github.repository }}" "${{ github.run_id }}")"

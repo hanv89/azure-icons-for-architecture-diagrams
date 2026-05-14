@@ -18,6 +18,12 @@ function defineSubcommand(name: Subcommand, description: string): void {
     .description(description)
     .requiredOption("--agent <name>", `target AI agent (${SUPPORTED_TARGETS.join("|")})`)
     .option("--target <dir>", "override target directory (validation use)")
+    // NOTE: the top-level program also exposes `-V, --version` (prints
+    // `pkg.version`). This subcommand-scoped `--version <semver>` is
+    // distinct: it pins which skill bundle to fetch. Commander disambiguates
+    // them by scope; user-facing help text shows both. Renaming this to
+    // `--pin` was considered but rejected to avoid breaking documented
+    // examples in attestations.
     .option("--version <semver>", "pin to a specific skill version (X.Y.Z); default = latest from main")
     .action(async (opts) => {
       // Validate --version pre-dispatch as defense-in-depth; baseUrl() in

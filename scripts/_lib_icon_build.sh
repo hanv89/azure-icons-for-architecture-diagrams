@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared library for icon build scripts. Source this file from build_*.sh
 # and (later) from .github/workflows/update-icons.yml to consolidate the
 # hardenings + safety gates introduced in the script-hardening sweep.

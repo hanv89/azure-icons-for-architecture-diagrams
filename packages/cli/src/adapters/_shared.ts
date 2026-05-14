@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import pkg from "../../package.json";
+import type { Adapter, InstallOptions, UninstallOptions, UpdateOptions, ListOptions } from "./types";
 
 // Shared adapter plumbing. Helpers here must be agent-agnostic — anything
 // Claude-Code-specific (default install path, allowed root) lives in the
@@ -328,6 +329,10 @@ export function stripFrontmatter(md: string): string {
  * encoding silently collides (e.g. 1.0.1000 vs 1.1.0). We hard-fail on that
  * input rather than mis-compare.
  */
+// Pre-release suffixes (`1.2.3-rc.1`) are intentionally NOT supported here
+// or in the `VERSION_RE` regex above. The release workflows tag from main
+// only — no rc branches in scope. If pre-release tags ever ship, this
+// matcher needs a re-design (build-metadata + precedence ordering).
 const SEMVER_SEGMENT_MAX = 999;
 
 export function satisfiesRequiresIcons(constraint: string, iconsSemver: string): boolean {
@@ -436,8 +441,6 @@ export async function withFatalReturn(fn: () => Promise<number>): Promise<number
  * does NOT use this factory because its on-disk layout (single .mdc file at
  * `<cwd>/.cursor/rules/`) is structurally different.
  */
-import type { Adapter, InstallOptions, UninstallOptions, UpdateOptions, ListOptions } from "./types";
-
 export interface FolderAdapterConfig {
   rootDir(): string;
   rootDisplay(): string;
@@ -447,6 +450,14 @@ export interface FolderAdapterConfig {
 // Persisted at install time so uninstall can iterate the file list without
 // re-fetching the manifest over the network. Hidden filename so it doesn't
 // clutter the user-visible skill folder.
+//
+// LOAD-BEARING: this basename is the only signal uninstall has to
+// distinguish a current-era install from a pre-0.9.0 install (when no
+// manifest was persisted). Renaming this constant is a one-way migration:
+// installs done under the old name fall into the legacy whole-folder
+// `rm -rf` path, which still works but loses the manifest-scoped
+// preservation of user-authored content alongside the skill. If renamed,
+// keep at least one release cycle of dual-read support.
 const PERSISTED_MANIFEST_BASENAME = ".azure-arch-skill-manifest.json";
 
 export function makeFolderInstallAdapter(cfg: FolderAdapterConfig): Adapter {
