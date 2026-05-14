@@ -34,12 +34,17 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#icons-v}"
+          # Build the notes with printf so every line stays inside this YAML
+          # block scalar — a column-0 continuation line silently breaks the
+          # whole workflow file's parsing.
+          notes=$(printf '%s\n' \
+            "Icon set release v${VERSION}. Two asset zips attached:" \
+            "- \`dist-azure-icons-v${VERSION}.zip\` — preserves \`dist/Azure/<Category>/<icon>.png\` layout. Unzip at the consumer's repo root to mirror the upstream structure." \
+            "- \`dist-fabric-icons-v${VERSION}.zip\` — preserves \`dist/Fabric/png/<flat>_<size>_<suffix>.png\` layout. Unzip at the consumer's repo root." \
+            "" \
+            "Built automatically by release-icons.yml.")
           gh release create "${GITHUB_REF_NAME}" \
             "dist-azure-icons-v${VERSION}.zip" \
             "dist-fabric-icons-v${VERSION}.zip" \
             --title "Icons v${VERSION}" \
-            --notes "Icon set release v${VERSION}. Two asset zips attached:
-- \`dist-azure-icons-v${VERSION}.zip\` — preserves \`dist/Azure/<Category>/<icon>.png\` layout. Unzip at the consumer's repo root to mirror the upstream structure.
-- \`dist-fabric-icons-v${VERSION}.zip\` — preserves \`dist/Fabric/png/<flat>_<size>_<suffix>.png\` layout. Unzip at the consumer's repo root.
-
-Built automatically by release-icons.yml."
+            --notes "${notes}"
