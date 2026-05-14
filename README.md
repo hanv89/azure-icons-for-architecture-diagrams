@@ -176,9 +176,9 @@ Azure filenames containing `(` or `)` (the monochrome variants) must be URL-enco
 
 ## Project status
 
-The icon library and the skill bundle are usable today — installed and in daily use by the team that maintains this repo. The two release tracks are independent: `icons-v*` for the icon library, `skill-v*` for the skill bundle plus its npm package, tied together by the skill's `requires_icons` range.
+Both tracks have shipped `v1.0.0` — `icons-v1.0.0` for the icon library and `skill-v1.0.0` for the skill bundle plus its npm package. The two tracks are independent and versioned separately, tied together by the skill's `requires_icons` range.
 
-The CLI flag surface is still stabilising toward an upcoming `1.0` release, at which point it will carry a SemVer compatibility commitment. Until then, treat flag names and output formatting as subject to change between minor versions — the install/usage paths documented above are stable in practice, but not yet contractually frozen.
+`v1.0.0` carries a SemVer compatibility commitment: within the `1.x` line, the CLI flag surface and the skill's install contract will not break — breaking changes wait for `2.0.0`. The icon library follows the same SemVer discipline on its own track.
 
 ## Icon sources
 
