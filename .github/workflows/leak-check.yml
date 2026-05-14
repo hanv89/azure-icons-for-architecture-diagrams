@@ -58,9 +58,13 @@ jobs:
           # -I excludes binary files (PNG icon filenames like
           # "AzureMachineLearningStudioWebServicePlan(m).png" otherwise trigger
           # the \bR[0-9]+\b alternative via binary fingerprint matches).
+          # check-leaks.sh is the workspace-side leak scanner — it necessarily
+          # embeds the same patterns as regex literals, same as this workflow
+          # and the fixture file. Exclude all three from the scan.
           MATCHES=$(git grep -InE "$PATTERN" \
                     -- ':!.github/workflows/leak-check.yml' \
                     ':!tests/leak-fixtures.txt' \
+                    ':!scripts/check-leaks.sh' \
                     || true)
 
           if [ -n "$MATCHES" ]; then
