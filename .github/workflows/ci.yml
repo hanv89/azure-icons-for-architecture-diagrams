@@ -47,3 +47,6 @@ jobs:
 
       - name: scripts/test_monitor_ms_tou.sh (fixture-based)
         run: bash scripts/test_monitor_ms_tou.sh
+
+      - name: scripts/build_icon_index.test.sh
+        run: bash scripts/build_icon_index.test.sh
