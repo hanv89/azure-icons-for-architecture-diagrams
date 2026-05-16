@@ -1,8 +1,8 @@
 ---
 name: azure-architecture-diagram
 description: Use this skill when creating Microsoft Azure or Microsoft Fabric architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram".
-version: 1.0.0
-requires_icons: ">=0.2.2"
+version: 1.1.0
+requires_icons: ">=1.1.0"
 ---
 
 # Azure Architecture Diagram Skill (PlantUML)
@@ -113,7 +113,16 @@ Example references:
 <img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Azure/Databases/AzureDatabaseForPostgreSQL.png>
 ```
 
-Browse the full icon list at: `https://github.com/hanv89/azure-icons-for-architecture-diagrams/tree/main/dist/Azure`
+### Finding the right icon (use the INDEX)
+
+Every icon ships with a flat markdown catalog you can grep. Each row carries the path, a human name, a description, and tags so you can look up the right `<Category>/<file>.png` without guessing.
+
+- Azure: <https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Azure/INDEX.md>
+- Fabric: <https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/INDEX.md>
+
+When the user names a service, **fetch the relevant INDEX.md once at the start of a session, search it (case-insensitive substring or tag match across name + description + tags), and use the `path` column from the matching row** verbatim in your `<img:URL>` token. Prefer this over guessing a filename from the product name — Microsoft's canonical filenames sometimes diverge from common usage (e.g. `Azure Cache for Redis` lives at `dist/Azure/Databases/AzureRedisCache.png`, `Microsoft Entra ID` at `dist/Azure/Identity/AzureActiveDirectory.png`).
+
+The category-level directory listing is still useful for browsing: `https://github.com/hanv89/azure-icons-for-architecture-diagrams/tree/main/dist/Azure`.
 
 ### Filenames with parentheses (URL encoding required)
 
