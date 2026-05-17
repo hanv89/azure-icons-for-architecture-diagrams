@@ -60,12 +60,27 @@ if [ -d "$FABRIC_DIR" ]; then
              \( -name '*_40_item.png' -o -name '*_40_non-item.png' -o -name '*_40.png' \) \
              2>/dev/null | shuf -n 5)
 fi
+# Kubernetes: subdir-structured icon set (labeled / unlabeled × resources /
+# control_plane / infrastructure). Sample one PNG per subdir family for
+# per-subdir coverage parity with Azure's per-category sample.
+KUBE_DIR="$REPO_ROOT/dist/Kubernetes/png"
+if [ -d "$KUBE_DIR" ]; then
+  for SUB in resources/labeled control_plane_components/labeled infrastructure_components/labeled; do
+    SUBDIR="$KUBE_DIR/$SUB"
+    [ -d "$SUBDIR" ] || continue
+    ICON=$(find "$SUBDIR" -name '*-128.png' 2>/dev/null | shuf -n 1)
+    if [ -n "$ICON" ]; then
+      REL_PATH=${ICON#"$REPO_ROOT"/}
+      URLS+=("${BASE}/${REL_PATH}|image/")
+    fi
+  done
+fi
 # Always probe USAGE-RULES.txt for each icon family (NOTICE-companion artifact).
 URLS+=("${BASE}/dist/Azure/USAGE-RULES.txt|text/plain")
 if [ -f "$REPO_ROOT/dist/Fabric/USAGE-RULES.txt" ]; then
   URLS+=("${BASE}/dist/Fabric/USAGE-RULES.txt|text/plain")
 fi
-echo "smoke_urls.sh: sampling ${#URLS[@]} URLs (Azure per-category + Fabric sample + USAGE-RULES.txt)" >&2
+echo "smoke_urls.sh: sampling ${#URLS[@]} URLs (Azure per-category + Fabric sample + Kubernetes per-subdir + USAGE-RULES.txt)" >&2
 
 FAILED=0
 FMT='%-7s %-10s %-30s %s\n'

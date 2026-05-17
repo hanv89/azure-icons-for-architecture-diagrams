@@ -1,9 +1,9 @@
 {
   "$schema": "./manifest.schema.json",
   "name": "azure-architecture-diagram",
-  "version": "1.1.0",
-  "requires_icons": ">=1.1.0",
-  "icons_version": "1.1.0",
+  "version": "1.2.0",
+  "requires_icons": ">=1.2.0",
+  "icons_version": "1.2.0",
   "files": [
     { "src": "dist/skill/SKILL.md",                              "dest": "SKILL.md",                              "role": "skill" },
     { "src": "dist/skill/examples/01-context.puml",              "dest": "examples/01-context.puml",              "role": "example" },
@@ -11,6 +11,7 @@
     { "src": "dist/skill/examples/03-system-architecture.puml",  "dest": "examples/03-system-architecture.puml",  "role": "example" },
     { "src": "dist/skill/examples/04-sequence-flow.puml",        "dest": "examples/04-sequence-flow.puml",        "role": "example" },
     { "src": "dist/skill/examples/05-component.puml",            "dest": "examples/05-component.puml",            "role": "example" },
-    { "src": "dist/skill/examples/06-deployment.puml",           "dest": "examples/06-deployment.puml",           "role": "example" }
+    { "src": "dist/skill/examples/06-deployment.puml",           "dest": "examples/06-deployment.puml",           "role": "example" },
+    { "src": "dist/skill/examples/07-azure-aks-mixed.puml",      "dest": "examples/07-azure-aks-mixed.puml",      "role": "example" }
   ]
 }

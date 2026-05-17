@@ -101,3 +101,35 @@ Microsoft Fabric icons (source for the dist/Fabric/ icon set):
     - Don't crop, flip, or rotate icons.
     - Don't distort or change icon shape in any way.
     - Don't use Microsoft product icons to represent your product or service.
+
+================================================================================
+
+Kubernetes Icons (source for the dist/Kubernetes/ icon set):
+
+  https://github.com/kubernetes/community/tree/main/icons
+
+  The Kubernetes Icons Set is licensed by the Kubernetes project (CNCF /
+  Linux Foundation) under a choice of either the Apache License 2.0
+  (https://www.apache.org/licenses/LICENSE-2.0) or the Creative Commons
+  Attribution 4.0 International License (CC-BY-4.0,
+  https://creativecommons.org/licenses/by/4.0/). The dual grant is
+  documented in icons/README.md § License in the upstream repository.
+
+  This project (dist/Kubernetes/) redistributes a subset of the upstream
+  PNGs (labeled + unlabeled variants at 128px and 256px sizes across
+  resources, control_plane_components, and infrastructure_components
+  subdirs). 10 upstream zero-byte placeholder files of the form
+  `<concept>-.png` (no size suffix) are dropped at build time. The
+  upstream commit SHA is recorded in dist/Kubernetes/UPSTREAM-SHA.txt
+  and refreshed by scripts/build_kubernetes.sh.
+
+  Kubernetes(R) is a registered trademark of The Linux Foundation in
+  the United States and other countries. Use of the Kubernetes name
+  and logo is governed by The Linux Foundation Trademark Usage
+  Guidelines at https://www.linuxfoundation.org/trademark-usage/.
+
+  This project is not affiliated with, sponsored by, or endorsed by
+  the Kubernetes project, the Cloud Native Computing Foundation, or
+  the Linux Foundation. The Kubernetes Icons Set is redistributed
+  here in unmodified form for use in architecture diagrams under
+  the Apache-2.0 / CC-BY-4.0 grant.
