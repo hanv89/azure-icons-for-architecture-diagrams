@@ -24,8 +24,14 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#icons-v}"
-          zip -r "dist-azure-icons-v${VERSION}.zip"  dist/Azure/
-          zip -r "dist-fabric-icons-v${VERSION}.zip" dist/Fabric/
+          # One zip per dist/<Vendor>/ directory. Auto-discover so future
+          # vendor adds (per-roadmap micro-phases) don't need a workflow
+          # edit — just push the new dist/<Vendor>/ directory and re-tag.
+          for VENDOR_DIR in dist/*/; do
+            [ -d "${VENDOR_DIR}" ] || continue
+            VENDOR_NAME="$(basename "${VENDOR_DIR}" | tr '[:upper:]' '[:lower:]')"
+            zip -r "dist-${VENDOR_NAME}-icons-v${VERSION}.zip" "${VENDOR_DIR}"
+          done
           ls -la dist-*.zip
 
       - name: Create GitHub Release
@@ -38,13 +44,16 @@ jobs:
           # block scalar — a column-0 continuation line silently breaks the
           # whole workflow file's parsing.
           notes=$(printf '%s\n' \
-            "Icon set release v${VERSION}. Two asset zips attached:" \
+            "Icon set release v${VERSION}. One asset zip per dist/<Vendor>/ directory:" \
             "- \`dist-azure-icons-v${VERSION}.zip\` — preserves \`dist/Azure/<Category>/<icon>.png\` layout. Unzip at the consumer's repo root to mirror the upstream structure." \
             "- \`dist-fabric-icons-v${VERSION}.zip\` — preserves \`dist/Fabric/png/<flat>_<size>_<suffix>.png\` layout. Unzip at the consumer's repo root." \
+            "- \`dist-kubernetes-icons-v${VERSION}.zip\` — preserves \`dist/Kubernetes/png/<family>/<variant>/<concept>-<size>.png\` layout. Unzip at the consumer's repo root." \
+            "" \
+            "Additional vendor zips may appear in future releases; each one mirrors the layout of its source \`dist/<Vendor>/\` directory." \
             "" \
             "Built automatically by release-icons.yml.")
+          # Glob discovery — picks up every dist-*-icons-v${VERSION}.zip the Build step produced.
           gh release create "${GITHUB_REF_NAME}" \
-            "dist-azure-icons-v${VERSION}.zip" \
-            "dist-fabric-icons-v${VERSION}.zip" \
+            dist-*-icons-v${VERSION}.zip \
             --title "Icons v${VERSION}" \
             --notes "${notes}"
