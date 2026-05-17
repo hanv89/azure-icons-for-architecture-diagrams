@@ -172,6 +172,47 @@ grep -qE '^\| `dist/Fabric/png/lakehouse_40_item\.png` \| Lakehouse \| 40 \| ite
   && pass "end-to-end Fabric: per-stem TSV row correct" \
   || fail "end-to-end Fabric: per-stem row not as expected"
 
+# ---- end-to-end Kubernetes: tiny fixture ----
+mkdir -p "${FIX_ROOT}/dist/Kubernetes/png/resources/labeled" \
+         "${FIX_ROOT}/dist/Kubernetes/png/resources/unlabeled" \
+         "${FIX_ROOT}/dist/Kubernetes/png/control_plane_components/labeled" \
+         "${FIX_ROOT}/dist/Kubernetes/png/infrastructure_components/labeled"
+touch "${FIX_ROOT}/dist/Kubernetes/png/resources/labeled/pod-128.png"
+touch "${FIX_ROOT}/dist/Kubernetes/png/resources/labeled/pod-256.png"
+touch "${FIX_ROOT}/dist/Kubernetes/png/resources/unlabeled/pod-128.png"
+touch "${FIX_ROOT}/dist/Kubernetes/png/control_plane_components/labeled/c-c-m-128.png"
+touch "${FIX_ROOT}/dist/Kubernetes/png/infrastructure_components/labeled/funky-128.png"
+cat > "${FIX_ROOT}/scripts/fixtures/icon-index-tags-kubernetes.tsv" <<'EOF'
+pod	Pod	Smallest deployable unit	`workload`, `compute`
+c-c-m	Cloud Controller Manager	Cloud-provider integration controller	`control-plane`, `cloud`
+EOF
+( cd "${FIX_ROOT}" && bash scripts/build_icon_index.sh kubernetes >/dev/null )
+out_k="${FIX_ROOT}/dist/Kubernetes/INDEX.md"
+test -f "${out_k}" \
+  && pass "end-to-end Kubernetes: INDEX.md produced" \
+  || fail "end-to-end Kubernetes: INDEX.md missing"
+
+rows_k=$(grep -cE '^\| `dist/Kubernetes/png/' "${out_k}")
+[ "${rows_k}" -eq 5 ] \
+  && pass "end-to-end Kubernetes: 5 data rows for 5 PNG fixtures" \
+  || fail "end-to-end Kubernetes: expected 5 rows, got ${rows_k}"
+
+grep -qE '^\| `dist/Kubernetes/png/resources/labeled/pod-128\.png` \| Pod \| labeled \| 128 \|' "${out_k}" \
+  && pass "end-to-end Kubernetes: labeled variant + per-stem TSV name" \
+  || fail "end-to-end Kubernetes: labeled-variant row missing/malformed"
+
+grep -qE '^\| `dist/Kubernetes/png/resources/unlabeled/pod-128\.png` \| Pod \| unlabeled \| 128 \|' "${out_k}" \
+  && pass "end-to-end Kubernetes: unlabeled variant parsed" \
+  || fail "end-to-end Kubernetes: unlabeled-variant row missing"
+
+grep -qE '^\| `dist/Kubernetes/png/control_plane_components/labeled/c-c-m-128\.png` \| Cloud Controller Manager \| control-plane-labeled \| 128 \|' "${out_k}" \
+  && pass "end-to-end Kubernetes: dashed stem (c-c-m) + control-plane variant" \
+  || fail "end-to-end Kubernetes: dashed-stem row missing/malformed"
+
+grep -qE '^\| `dist/Kubernetes/png/infrastructure_components/labeled/funky-128\.png` \| Funky \| infra-labeled \| 128 \| Kubernetes Funky \| `kubernetes`, `infra-labeled` \|$' "${out_k}" \
+  && pass "end-to-end Kubernetes: heuristic fallback for unknown stem" \
+  || fail "end-to-end Kubernetes: heuristic-fallback row not as expected"
+
 # ---- summary ----
 echo "---"
 echo "Total: PASS=${PASSED} FAIL=${FAILED}"
