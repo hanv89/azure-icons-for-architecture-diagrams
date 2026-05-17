@@ -50,7 +50,7 @@ rectangle "**Azure Kubernetes Service (AKS)**\n<img:https://raw.githubuserconten
 }
 
 ' ----- Azure data tier (right) -----
-rectangle "**Azure SQL Database**\n<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Azure/Databases/AzureSQLDatabase.png>\nproduct catalog" as sql
+rectangle "**Azure SQL Database**\n<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Azure/Databases/AzureSqlDatabase.png>\nproduct catalog" as sql
 
 ' ----- Flow -----
 user -right-> afd : HTTPS
