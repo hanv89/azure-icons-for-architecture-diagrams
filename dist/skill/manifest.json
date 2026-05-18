@@ -1,7 +1,7 @@
 {
   "$schema": "./manifest.schema.json",
   "name": "azure-architecture-diagram",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "requires_icons": ">=1.4.0",
   "icons_version": "1.4.0",
   "files": [
