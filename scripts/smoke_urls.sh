@@ -87,12 +87,21 @@ if [ -d "$FU_DIR" ]; then
     fi
   done
 fi
+# Devicon: flat icon set, single size 48 + -original variant.
+# Sample 5 random PNGs across the curated dev-tool set.
+DV_DIR="$REPO_ROOT/dist/Devicon/png"
+if [ -d "$DV_DIR" ]; then
+  while IFS= read -r ICON; do
+    REL_PATH=${ICON#"$REPO_ROOT"/}
+    URLS+=("${BASE}/${REL_PATH}|image/")
+  done < <(find "$DV_DIR" -name '*-original_48.png' 2>/dev/null | shuf -n 5)
+fi
 # Always probe USAGE-RULES.txt for each icon family (NOTICE-companion artifact).
 URLS+=("${BASE}/dist/Azure/USAGE-RULES.txt|text/plain")
 if [ -f "$REPO_ROOT/dist/Fabric/USAGE-RULES.txt" ]; then
   URLS+=("${BASE}/dist/Fabric/USAGE-RULES.txt|text/plain")
 fi
-echo "smoke_urls.sh: sampling ${#URLS[@]} URLs (Azure per-category + Fabric sample + Kubernetes per-subdir + USAGE-RULES.txt)" >&2
+echo "smoke_urls.sh: sampling ${#URLS[@]} URLs (Azure per-category + Fabric sample + Kubernetes per-subdir + FluentUI per-size + Devicon sample + USAGE-RULES.txt)" >&2
 
 FAILED=0
 FMT='%-7s %-10s %-30s %s\n'

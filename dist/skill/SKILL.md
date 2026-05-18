@@ -1,8 +1,8 @@
 ---
 name: azure-architecture-diagram
-description: Use this skill when creating Microsoft Azure, Microsoft Fabric, Kubernetes, or Microsoft Fluent UI-decorated architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric + Kubernetes + FluentUI), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline, mixed AKS deployment, UI-decorated Azure), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram", "Kubernetes deployment diagram", "AKS architecture", "K8s Pod + Service + Deployment diagram", "diagram with status icons", "Azure with user/auth/data icons".
-version: 1.3.0
-requires_icons: ">=1.3.0"
+description: Use this skill when creating Microsoft Azure, Microsoft Fabric, Kubernetes, Microsoft Fluent UI-decorated, or Devicon dev-tool architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric + Kubernetes + FluentUI + Devicon), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline, mixed AKS deployment, UI-decorated Azure, DevOps pipeline with dev tools), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram", "Kubernetes deployment diagram", "AKS architecture", "K8s Pod + Service + Deployment diagram", "diagram with status icons", "Azure with user/auth/data icons", "devops pipeline diagram", "draw [language/framework/tool] in architecture".
+version: 1.4.0
+requires_icons: ">=1.4.0"
 ---
 
 # Azure Architecture Diagram Skill (PlantUML)
@@ -121,6 +121,7 @@ Every icon ships with a flat markdown catalog you can grep. Each row carries the
 - Fabric: <https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/INDEX.md>
 - Kubernetes: <https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Kubernetes/INDEX.md>
 - FluentUI: <https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/FluentUI/INDEX.md>
+- Devicon: <https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Devicon/INDEX.md>
 
 When the user names a service, **fetch the relevant INDEX.md once at the start of a session, search it (case-insensitive substring or tag match across name + description + tags), and use the `path` column from the matching row** verbatim in your `<img:URL>` token. Prefer this over guessing a filename from the product name — Microsoft's canonical filenames sometimes diverge from common usage (e.g. `Azure Cache for Redis` lives at `dist/Azure/Databases/AzureRedisCache.png`, `Microsoft Entra ID` at `dist/Azure/Identity/AzureActiveDirectory.png`).
 
@@ -363,6 +364,66 @@ Underscored stems = no URL encoding needed (no parentheses, no spaces).
 ### Mixing Azure + FluentUI in one diagram
 
 Typical pattern: Azure infrastructure decorated with FluentUI UI affordances — Front Door + App Service + SQL Database as the backbone, FluentUI Cloud / Lock Shield / Person / Mail / status icons as labels for cloud-boundary, authentication, user, notification, and health state. See `examples/08-azure-fluentui-mixed.puml` for a worked Azure + FluentUI mixed example.
+
+## Devicon icons (dev-tool scope)
+
+Since `icons-v1.4.0`, the skill carries a curated subset of **Devicon** — ~150 popular dev-tool concepts sourced from `devicons/devicon` (community-maintained MIT, Copyright (c) 2015 konpa). The scope is a **dev-tool** pack: programming languages, web frameworks, build tools, container runtimes, cloud providers, databases, observability stacks, web servers, CI/CD platforms, SCM/collab platforms, IDEs/editors, data + AI libraries, mobile frameworks, testing frameworks, OS / distros, browsers, and runtimes. Each icon depicts a third-party brand (Python, Docker, Kubernetes, etc.); per-brand trademark policies apply separately — the MIT grant from Devicon is the redistribution basis.
+
+Devicon icons live under:
+
+```
+https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Devicon/png/
+```
+
+**Layout**: flat, one file per stem. Filename pattern: `<stem>-original_48.png` where `<stem>` is the lowercase upstream key (e.g. `python`, `docker`, `kubernetes`, `dot-net`, `nextjs`).
+
+**Sizes available**: `48` only (single canonical pixel-dimension). PlantUML scales inside `<img:>` tokens automatically — sufficient for inline node labels alongside Azure 48-anchor service icons.
+
+**Variant**: `-original` only — the colored brand glyph closest to Azure's filled-color anchor. The upstream's `-plain` (monochrome) and `-line` (outline) variants are intentionally not shipped (off-style for our diagrams).
+
+**Curated ~150 stems** (full table with categories in `dist/Devicon/INDEX.md`):
+
+| Category | Sample stems |
+|---|---|
+| Languages | `python`, `javascript`, `typescript`, `go`, `java`, `rust`, `c`, `cplusplus`, `csharp`, `ruby`, `php`, `kotlin`, `swift`, `scala`, `r`, `haskell`, `lua`, `clojure`, `elixir`, `erlang`, `dart`, `ocaml`, `fsharp`, `julia`, `bash` |
+| Web frameworks | `react`, `vuejs`, `angular`, `nextjs`, `svelte`, `spring`, `flask`, `express`, `fastapi`, `nestjs`, `laravel`, `dot-net`, `dotnetcore`, `quarkus`, `symfony`, `phoenix`, `gatsby`, `nuxtjs`, `remix`, `astro` |
+| Frontend | `tailwindcss`, `bootstrap`, `jquery`, `redux`, `alpinejs`, `materialui`, `storybook` |
+| Build tools | `webpack`, `vite`, `babel`, `rollup`, `sass`, `postcss`, `npm`, `yarn`, `pnpm`, `bun`, `maven`, `gradle`, `bazel` |
+| Containers | `docker`, `kubernetes`, `podman`, `helm`, `rancher` |
+| Cloud + IaC | `azure`, `googlecloud`, `digitalocean`, `heroku`, `vercel`, `netlify`, `cloudflare`, `firebase`, `supabase`, `terraform`, `pulumi`, `ansible` |
+| Databases | `postgresql`, `mysql`, `mariadb`, `mongodb`, `redis`, `sqlite`, `cassandra`, `dynamodb`, `couchbase`, `couchdb`, `neo4j`, `influxdb`, `microsoftsqlserver`, `oracle`, `clickhouse` |
+| Observability | `elasticsearch`, `prometheus`, `grafana`, `kibana`, `logstash`, `sentry` |
+| Messaging / web servers | `nginx`, `apache`, `envoy`, `rabbitmq` |
+| CI/CD + SCM + collab | `argocd`, `jenkins`, `githubactions`, `gitlab`, `travis`, `github`, `bitbucket`, `jira`, `slack`, `notion` |
+| IDEs / editors | `figma`, `vscode`, `intellij`, `visualstudio`, `pycharm`, `webstorm`, `androidstudio`, `eclipse`, `vim`, `neovim`, `emacs`, `tmux` |
+| Data / AI | `pytorch`, `tensorflow`, `pandas`, `numpy`, `jupyter`, `anaconda`, `hadoop` |
+| Mobile | `flutter`, `ionic`, `android` |
+| Testing | `mocha`, `playwright`, `selenium` |
+| OS / runtime / browsers | `linux`, `ubuntu`, `debian`, `vagrant`, `chrome`, `firefox`, `nodejs` |
+
+### Common Devicon references
+
+```plantuml
+' Devicon language + tool icons (48px, -original variant)
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Devicon/png/python-original_48.png>
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Devicon/png/docker-original_48.png>
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Devicon/png/kubernetes-original_48.png>
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Devicon/png/github-original_48.png>
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Devicon/png/githubactions-original_48.png>
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Devicon/png/postgresql-original_48.png>
+```
+
+Hyphenated stems (`dot-net`) and lowercase stems = no URL encoding needed (no parentheses, no spaces).
+
+### Mixing Azure / Kubernetes + Devicon in one diagram
+
+Typical patterns:
+
+- **DevOps pipeline**: source (`github-original_48.png`) → CI/CD (`githubactions-original_48.png` or `argocd-original_48.png`) → registry (e.g. Azure Container Registry from the Azure set) → AKS / Kubernetes runtime (`kubernetes-original_48.png`) → observability (`prometheus-original_48.png` + `grafana-original_48.png`). See `examples/09-devops-pipeline.puml` for a worked example.
+- **Polyglot service map**: each microservice node carries its language (`python-original_48.png`, `go-original_48.png`, `nodejs-original_48.png`) and database (`postgresql-original_48.png`, `redis-original_48.png`), with Azure / FluentUI for the surrounding infrastructure and UI affordances.
+- **Tech-stack reference**: enumerate frontend (`react-original_48.png` + `tailwindcss-original_48.png`), backend (`fastapi-original_48.png` + `python-original_48.png`), data (`postgresql-original_48.png` + `redis-original_48.png` + `elasticsearch-original_48.png`), and infrastructure (`docker-original_48.png` + `kubernetes-original_48.png` + `terraform-original_48.png`) in a single legend-style diagram.
+
+**Trademark note**: Devicon icons depict third-party brands (Python language, Docker container engine, etc.). Use these icons only to identify the tool / language / platform they depict — do not use a Devicon icon to represent **your** product or service. The MIT grant from Devicon does not transfer any trademark rights to depicted brands; see `NOTICE` § Devicon for the per-tool-trademark disclaim.
 
 ## Pattern 1: System Architecture Diagram
 
@@ -609,3 +670,4 @@ Renderable example diagrams live in `examples/` (file list mirrors `manifest.jso
 - [`06-deployment.puml`](examples/06-deployment.puml) — Multi-region active-active deployment with Fabric workspace replication.
 - [`07-azure-aks-mixed.puml`](examples/07-azure-aks-mixed.puml) — Azure-fronted AKS deployment with a Kubernetes workload subgraph (Front Door + App Gateway → AKS Service → Deployment + Pods + ConfigMap + Secret → Azure SQL). Canonical Azure + Kubernetes mixed example, added in `icons-v1.2.0` / `skill-v1.2.0`.
 - [`08-azure-fluentui-mixed.puml`](examples/08-azure-fluentui-mixed.puml) — Azure web architecture decorated with FluentUI UI affordances (Cloud boundary, Shield + Person Add for auth, status indicators, organisation context). Canonical Azure + FluentUI mixed example, added in `icons-v1.3.0` / `skill-v1.3.0`.
+- [`09-devops-pipeline.puml`](examples/09-devops-pipeline.puml) — DevOps pipeline from source (GitHub) through CI/CD (GitHub Actions + Argo CD) into AKS / Kubernetes runtime, with Prometheus + Grafana observability and a Postgres data store. Canonical Devicon-decorated DevOps example, added in `icons-v1.4.0` / `skill-v1.4.0`.
