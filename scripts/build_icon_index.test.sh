@@ -251,6 +251,46 @@ grep -qE '^\| `dist/FluentUI/png/funky_widget_32_color\.png` \| Funky Widget \| 
   && pass "end-to-end FluentUI: heuristic fallback for unknown stem" \
   || fail "end-to-end FluentUI: heuristic-fallback row not as expected"
 
+# ---- end-to-end Devicon: tiny fixture ----
+mkdir -p "${FIX_ROOT}/dist/Devicon/png"
+touch "${FIX_ROOT}/dist/Devicon/png/python-original_48.png"
+touch "${FIX_ROOT}/dist/Devicon/png/docker-original_48.png"
+touch "${FIX_ROOT}/dist/Devicon/png/dot-net-original_48.png"          # hyphenated stem
+touch "${FIX_ROOT}/dist/Devicon/png/funky-tool-original_48.png"        # unknown stem → heuristic
+touch "${FIX_ROOT}/dist/Devicon/png/redis-original_48.png"
+cat > "${FIX_ROOT}/scripts/fixtures/icon-index-tags-devicon.tsv" <<'EOF'
+key	name	category	description	tags
+python	Python	language	Python programming language	`devicon`, `language`, `python`
+docker	Docker	container	Docker container engine	`devicon`, `container`, `docker`
+dot-net	.NET	web-framework	.NET (classic) framework	`devicon`, `web`, `backend`, `dotnet`
+redis	Redis	database	Redis in-memory data store	`devicon`, `database`, `cache`, `redis`
+EOF
+( cd "${FIX_ROOT}" && bash scripts/build_icon_index.sh devicon >/dev/null )
+out_d="${FIX_ROOT}/dist/Devicon/INDEX.md"
+test -f "${out_d}" \
+  && pass "end-to-end Devicon: INDEX.md produced" \
+  || fail "end-to-end Devicon: INDEX.md missing"
+
+rows_d=$(grep -cE '^\| `dist/Devicon/png/' "${out_d}")
+[ "${rows_d}" -eq 5 ] \
+  && pass "end-to-end Devicon: 5 data rows for 5 PNG fixtures" \
+  || fail "end-to-end Devicon: expected 5 rows, got ${rows_d}"
+
+# Per-stem TSV name for python.
+grep -qE '^\| `dist/Devicon/png/python-original_48\.png` \| Python \| language \| Python programming language \| `devicon`, `language`, `python` \|$' "${out_d}" \
+  && pass "end-to-end Devicon: per-stem TSV name + category (python)" \
+  || fail "end-to-end Devicon: python row not as expected"
+
+# Hyphenated stem parsed correctly (dot-net).
+grep -qE '^\| `dist/Devicon/png/dot-net-original_48\.png` \| \.NET \| web-framework \| ' "${out_d}" \
+  && pass "end-to-end Devicon: hyphenated stem (dot-net) parsed + TSV name" \
+  || fail "end-to-end Devicon: dot-net row not as expected"
+
+# Heuristic fallback for unknown stem: funky-tool → "Funky-tool" + uncategorized.
+grep -qE '^\| `dist/Devicon/png/funky-tool-original_48\.png` \| Funky-tool \| uncategorized \| Devicon Funky-tool \| `devicon`, `uncategorized` \|$' "${out_d}" \
+  && pass "end-to-end Devicon: heuristic fallback for unknown stem" \
+  || fail "end-to-end Devicon: heuristic-fallback row not as expected"
+
 # ---- summary ----
 echo "---"
 echo "Total: PASS=${PASSED} FAIL=${FAILED}"
