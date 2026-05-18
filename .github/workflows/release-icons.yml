@@ -27,9 +27,26 @@ jobs:
           # One zip per dist/<Vendor>/ directory. Auto-discover so future
           # vendor adds (per-roadmap micro-phases) don't need a workflow
           # edit — just push the new dist/<Vendor>/ directory and re-tag.
+          # Excludes: non-vendor companion dirs.
+          #   - dist/skill/      — skill bundle (separate release track via
+          #                        release-skill.yml + npm publish)
+          #   - dist/Custom/     — reserved placeholder for internal/3rd-party
+          #                        icons (empty in Phase 1; ship only when
+          #                        non-empty in a future phase by removing
+          #                        from this list)
+          #   - dist/baselines/  — ToU/policy baseline text files for the
+          #                        upstream monitor scripts; not icons
+          #   - dist/notes/      — internal notes (if any); not for release
+          EXCLUDE_NAMES="skill Custom baselines notes"
           for VENDOR_DIR in dist/*/; do
             [ -d "${VENDOR_DIR}" ] || continue
-            VENDOR_NAME="$(basename "${VENDOR_DIR}" | tr '[:upper:]' '[:lower:]')"
+            VENDOR_BASENAME="$(basename "${VENDOR_DIR}")"
+            skip=0
+            for excl in ${EXCLUDE_NAMES}; do
+              [ "${VENDOR_BASENAME}" = "${excl}" ] && skip=1 && break
+            done
+            [ "${skip}" = "1" ] && { echo "Skipping non-vendor: ${VENDOR_DIR}"; continue; }
+            VENDOR_NAME="$(echo "${VENDOR_BASENAME}" | tr '[:upper:]' '[:lower:]')"
             zip -r "dist-${VENDOR_NAME}-icons-v${VERSION}.zip" "${VENDOR_DIR}"
           done
           ls -la dist-*.zip
