@@ -213,6 +213,44 @@ grep -qE '^\| `dist/Kubernetes/png/infrastructure_components/labeled/funky-128\.
   && pass "end-to-end Kubernetes: heuristic fallback for unknown stem" \
   || fail "end-to-end Kubernetes: heuristic-fallback row not as expected"
 
+# ---- end-to-end FluentUI: tiny fixture ----
+mkdir -p "${FIX_ROOT}/dist/FluentUI/png"
+touch "${FIX_ROOT}/dist/FluentUI/png/cloud_24_color.png"
+touch "${FIX_ROOT}/dist/FluentUI/png/cloud_32_color.png"
+touch "${FIX_ROOT}/dist/FluentUI/png/cloud_48_color.png"
+touch "${FIX_ROOT}/dist/FluentUI/png/lock_shield_48_color.png"     # multi-word stem
+touch "${FIX_ROOT}/dist/FluentUI/png/funky_widget_32_color.png"    # unknown stem → heuristic
+cat > "${FIX_ROOT}/scripts/fixtures/icon-index-tags-fluentui.tsv" <<'EOF'
+cloud	Cloud	Generic cloud affordance	`cloud`, `generic`
+lock_shield	Lock Shield	Locked + protected	`security`, `lock`
+EOF
+( cd "${FIX_ROOT}" && bash scripts/build_icon_index.sh fluentui >/dev/null )
+out_fu="${FIX_ROOT}/dist/FluentUI/INDEX.md"
+test -f "${out_fu}" \
+  && pass "end-to-end FluentUI: INDEX.md produced" \
+  || fail "end-to-end FluentUI: INDEX.md missing"
+
+rows_fu=$(grep -cE '^\| `dist/FluentUI/png/' "${out_fu}")
+[ "${rows_fu}" -eq 5 ] \
+  && pass "end-to-end FluentUI: 5 data rows for 5 PNG fixtures" \
+  || fail "end-to-end FluentUI: expected 5 rows, got ${rows_fu}"
+
+# Multi-size: cloud yields 3 rows at sizes 24, 32, 48.
+n_cloud=$(grep -cE '^\| `dist/FluentUI/png/cloud_[0-9]+_color\.png` \| Cloud \|' "${out_fu}")
+[ "${n_cloud}" -eq 3 ] \
+  && pass "end-to-end FluentUI: per-stem cloud produces 3 size rows" \
+  || fail "end-to-end FluentUI: expected 3 cloud rows, got ${n_cloud}"
+
+# Multi-word stem parsed correctly (lock_shield).
+grep -qE '^\| `dist/FluentUI/png/lock_shield_48_color\.png` \| Lock Shield \| 48 \| Locked \+ protected \| `security`, `lock` \|$' "${out_fu}" \
+  && pass "end-to-end FluentUI: multi-word stem (lock_shield) parsed + per-stem TSV name" \
+  || fail "end-to-end FluentUI: lock_shield row not as expected"
+
+# Heuristic fallback for unknown stem: funky_widget → "Funky Widget".
+grep -qE '^\| `dist/FluentUI/png/funky_widget_32_color\.png` \| Funky Widget \| 32 \| FluentUI Funky Widget \| `fluentui` \|$' "${out_fu}" \
+  && pass "end-to-end FluentUI: heuristic fallback for unknown stem" \
+  || fail "end-to-end FluentUI: heuristic-fallback row not as expected"
+
 # ---- summary ----
 echo "---"
 echo "Total: PASS=${PASSED} FAIL=${FAILED}"

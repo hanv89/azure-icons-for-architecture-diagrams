@@ -75,6 +75,18 @@ if [ -d "$KUBE_DIR" ]; then
     fi
   done
 fi
+# FluentUI: flat icon set with size in filename. Sample one PNG per size
+# (24 / 32 / 48) so all three canonical sizes are validated.
+FU_DIR="$REPO_ROOT/dist/FluentUI/png"
+if [ -d "$FU_DIR" ]; then
+  for SZ in 24 32 48; do
+    ICON=$(find "$FU_DIR" -name "*_${SZ}_color.png" 2>/dev/null | shuf -n 1)
+    if [ -n "$ICON" ]; then
+      REL_PATH=${ICON#"$REPO_ROOT"/}
+      URLS+=("${BASE}/${REL_PATH}|image/")
+    fi
+  done
+fi
 # Always probe USAGE-RULES.txt for each icon family (NOTICE-companion artifact).
 URLS+=("${BASE}/dist/Azure/USAGE-RULES.txt|text/plain")
 if [ -f "$REPO_ROOT/dist/Fabric/USAGE-RULES.txt" ]; then

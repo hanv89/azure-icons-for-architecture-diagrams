@@ -1,8 +1,8 @@
 ---
 name: azure-architecture-diagram
-description: Use this skill when creating Microsoft Azure, Microsoft Fabric, or Kubernetes architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric + Kubernetes), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline, mixed AKS deployment), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram", "Kubernetes deployment diagram", "AKS architecture", "K8s Pod + Service + Deployment diagram".
-version: 1.2.1
-requires_icons: ">=1.2.0"
+description: Use this skill when creating Microsoft Azure, Microsoft Fabric, Kubernetes, or Microsoft Fluent UI-decorated architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric + Kubernetes + FluentUI), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline, mixed AKS deployment, UI-decorated Azure), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram", "Kubernetes deployment diagram", "AKS architecture", "K8s Pod + Service + Deployment diagram", "diagram with status icons", "Azure with user/auth/data icons".
+version: 1.3.0
+requires_icons: ">=1.3.0"
 ---
 
 # Azure Architecture Diagram Skill (PlantUML)
@@ -120,6 +120,7 @@ Every icon ships with a flat markdown catalog you can grep. Each row carries the
 - Azure: <https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Azure/INDEX.md>
 - Fabric: <https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/INDEX.md>
 - Kubernetes: <https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Kubernetes/INDEX.md>
+- FluentUI: <https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/FluentUI/INDEX.md>
 
 When the user names a service, **fetch the relevant INDEX.md once at the start of a session, search it (case-insensitive substring or tag match across name + description + tags), and use the `path` column from the matching row** verbatim in your `<img:URL>` token. Prefer this over guessing a filename from the product name — Microsoft's canonical filenames sometimes diverge from common usage (e.g. `Azure Cache for Redis` lives at `dist/Azure/Databases/AzureRedisCache.png`, `Microsoft Entra ID` at `dist/Azure/Identity/AzureActiveDirectory.png`).
 
@@ -313,6 +314,55 @@ Kubernetes filenames use plain ASCII with dashes — no URL encoding needed (no 
 ### Mixing Azure + Kubernetes in one diagram
 
 The canonical mixed pattern is **Azure AKS (managed Kubernetes) surrounding a Kubernetes workload subgraph**: Azure Front Door → Azure App Gateway → AKS cluster (containing Service → Deployment → Pods + ConfigMap + Secret) → Azure SQL Database. See `examples/07-azure-aks-mixed.puml` for a worked example.
+
+## FluentUI System Icons (decorator scope)
+
+Since `icons-v1.3.0`, the skill carries a curated subset of **Microsoft Fluent UI System Icons** — 25 architecture-diagram concepts sourced from `microsoft/fluentui-system-icons` (Microsoft first-party, MIT license — same evidence chain as Fabric). The scope is a **decorator** pack, not a per-service architecture set: it adds UI-style affordances (Cloud, Database, Shield, Person, Mail, Calendar, status indicators, ...) that compose alongside Azure / Fabric / Kubernetes service icons to label users, data flow direction, status, or organisational boundaries.
+
+FluentUI icons live under:
+
+```
+https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/FluentUI/png/
+```
+
+**Layout**: flat, one file per `(concept × size)` pair. Filename pattern: `<stem>_<size>_color.png` where `<stem>` is the snake_case concept name (e.g. `lock_shield`, `cloud_dismiss`, `person_add`).
+
+**Sizes available**: `24`, `32`, `48` (single canonical pixel-dimensions). Pick `24` for inline status badges, `32` for in-line affordances, `48` for header / Azure-comparable icons.
+
+**Variant**: `_color` only — filled-color gradient style closest to Azure's filled-glyph anchor. The upstream's `_regular` (line-art) and `_filled` (one-color) variants are intentionally not shipped (off-style for our diagrams).
+
+**Curated 25 concepts** (full table in `dist/FluentUI/INDEX.md`):
+
+| Family | Stems |
+|---|---|
+| Cloud / data | `cloud`, `cloud_dismiss`, `database`, `data_trending` |
+| Identity | `person`, `people`, `person_add` |
+| Security | `shield` |
+| Organisation | `building`, `briefcase`, `apps` |
+| Time | `clock`, `calendar` |
+| Communication | `send`, `chat` |
+| Code / docs | `code_block`, `clipboard`, `book` |
+| Status | `checkmark_circle`, `warning`, `alert` |
+| Config / control | `settings` |
+| Affordances | `puzzle_piece`, `pin`, `question_circle` |
+
+### Common FluentUI references
+
+```plantuml
+' FluentUI status + identity icons (48px, filled-color)
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/FluentUI/png/cloud_48_color.png>
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/FluentUI/png/database_48_color.png>
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/FluentUI/png/shield_48_color.png>
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/FluentUI/png/person_48_color.png>
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/FluentUI/png/checkmark_circle_24_color.png>
+<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/FluentUI/png/warning_24_color.png>
+```
+
+Underscored stems = no URL encoding needed (no parentheses, no spaces).
+
+### Mixing Azure + FluentUI in one diagram
+
+Typical pattern: Azure infrastructure decorated with FluentUI UI affordances — Front Door + App Service + SQL Database as the backbone, FluentUI Cloud / Lock Shield / Person / Mail / status icons as labels for cloud-boundary, authentication, user, notification, and health state. See `examples/08-azure-fluentui-mixed.puml` for a worked Azure + FluentUI mixed example.
 
 ## Pattern 1: System Architecture Diagram
 
@@ -558,3 +608,4 @@ Renderable example diagrams live in `examples/` (file list mirrors `manifest.jso
 - [`05-component.puml`](examples/05-component.puml) — AKS cluster internals (C4 level 3 zoom into the `03-system-architecture.puml` AKS box).
 - [`06-deployment.puml`](examples/06-deployment.puml) — Multi-region active-active deployment with Fabric workspace replication.
 - [`07-azure-aks-mixed.puml`](examples/07-azure-aks-mixed.puml) — Azure-fronted AKS deployment with a Kubernetes workload subgraph (Front Door + App Gateway → AKS Service → Deployment + Pods + ConfigMap + Secret → Azure SQL). Canonical Azure + Kubernetes mixed example, added in `icons-v1.2.0` / `skill-v1.2.0`.
+- [`08-azure-fluentui-mixed.puml`](examples/08-azure-fluentui-mixed.puml) — Azure web architecture decorated with FluentUI UI affordances (Cloud boundary, Shield + Person Add for auth, status indicators, organisation context). Canonical Azure + FluentUI mixed example, added in `icons-v1.3.0` / `skill-v1.3.0`.
