@@ -1,7 +1,7 @@
 ---
 name: azure-architecture-diagram
 description: Use this skill when creating Microsoft Azure, Microsoft Fabric, Kubernetes, Microsoft Fluent UI-decorated, or Devicon dev-tool architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric + Kubernetes + FluentUI + Devicon), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline, mixed AKS deployment, UI-decorated Azure, DevOps pipeline with dev tools), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram", "Kubernetes deployment diagram", "AKS architecture", "K8s Pod + Service + Deployment diagram", "diagram with status icons", "Azure with user/auth/data icons", "devops pipeline diagram", "draw [language/framework/tool] in architecture".
-version: 1.4.0
+version: 1.4.1
 requires_icons: ">=1.4.0"
 ---
 
@@ -123,9 +123,71 @@ Every icon ships with a flat markdown catalog you can grep. Each row carries the
 - FluentUI: <https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/FluentUI/INDEX.md>
 - Devicon: <https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Devicon/INDEX.md>
 
-When the user names a service, **fetch the relevant INDEX.md once at the start of a session, search it (case-insensitive substring or tag match across name + description + tags), and use the `path` column from the matching row** verbatim in your `<img:URL>` token. Prefer this over guessing a filename from the product name — Microsoft's canonical filenames sometimes diverge from common usage (e.g. `Azure Cache for Redis` lives at `dist/Azure/Databases/AzureRedisCache.png`, `Microsoft Entra ID` at `dist/Azure/Identity/AzureActiveDirectory.png`).
+When the user names a service, **fetch the relevant INDEX.md once at the start of a session, search it (case-insensitive substring or tag match across name + description + tags), and use the `path` column from the matching row** verbatim in your `<img:URL>` token.
 
 The category-level directory listing is still useful for browsing: `https://github.com/hanv89/azure-icons-for-architecture-diagrams/tree/main/dist/Azure`.
+
+### Filename rule (non-negotiable)
+
+> Every `<img:URL>` token MUST use a filename copied verbatim from the `path` column of the relevant `INDEX.md`. Guessing a filename from the product name is forbidden. Vendor canonical filenames routinely diverge from common product naming, and a mismatch returns HTTP 404 from `raw.githubusercontent.com` — PlantUML then renders a broken-image placeholder with no error message. The render looks "almost right" until a reviewer notices.
+
+Worked counter-examples (real canonical filenames vs the names an agent would guess):
+
+| Product name a user might say | Wrong (guessed) filename | Correct (canonical) filename |
+|---|---|---|
+| `Azure SQL Database` | `AzureSQLDatabase.png` | `AzureSqlDatabase.png` |
+| `Microsoft Entra ID` | `MicrosoftEntraID.png` | `AzureActiveDirectory.png` |
+| `Azure Cache for Redis` | `AzureCacheForRedis.png` | `AzureRedisCache.png` |
+| `Microsoft Fabric Lakehouse` | `Lakehouse.png` | `lakehouse_40_item.png` |
+| `Kubernetes Pod` | `Pod.png` | `resources/labeled/pod-128.png` |
+| `Microsoft FluentUI Cloud` | `Cloud.png` | `cloud_48_color.png` |
+| `Python (Devicon)` | `python.png` | `python-original_48.png` |
+
+The `INDEX.md` `path` column is authoritative; PNG-on-disk filenames are authoritative; product names are not. If an agent has not consulted the INDEX.md for the source it's drawing from, it has not yet earned the right to emit an `<img:URL>` token for that vendor.
+
+#### Anti-example (do NOT emit) and corrected version
+
+```plantuml
+' WRONG — guessed filename `AzureSQLDatabase.png` does not exist on disk;
+'         raw.githubusercontent.com returns 404; PlantUML renders a broken-image placeholder.
+rectangle "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Azure/Databases/AzureSQLDatabase.png>\nAzure SQL Database" as sql
+```
+
+```plantuml
+' RIGHT — canonical filename `AzureSqlDatabase.png` from dist/Azure/INDEX.md row.
+rectangle "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Azure/Databases/AzureSqlDatabase.png>\nAzure SQL Database" as sql
+```
+
+This exact typo broke `examples/07-azure-aks-mixed.puml` in the `icons-v1.2.0` shipping cycle and forced the `skill-v1.2.1` hotfix. The render gate detected it post-tag; the cost was a same-day patch release. Cheaper to consult the INDEX upfront.
+
+### Per-vendor INDEX guide
+
+Each vendor uses a different canonical filename convention. The pattern is fixed by upstream; do not adapt it. Quick reference:
+
+**Azure** (`dist/Azure/INDEX.md` · `https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Azure/INDEX.md`)
+- Pattern: `dist/Azure/<Category>/<PascalCaseStem>.png` (colored) or `<PascalCaseStem>(m).png` (monochrome, URL-encode parens as `%28m%29`).
+- Quirk: PascalCase that is NOT all-upper for acronyms — `AzureSqlDatabase` (NOT `AzureSQLDatabase`); `AzureCosmosDb` (NOT `AzureCosmosDB`); `AzureIoTHub` keeps `IoT`; `AzureRedisCache` (NOT `AzureCacheForRedis`).
+- Worked example: `<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Azure/Databases/AzureSqlDatabase.png>`
+
+**Fabric** (`dist/Fabric/INDEX.md` · `https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/INDEX.md`)
+- Pattern: `dist/Fabric/png/<snake_case_stem>_<size>_<suffix>.png` where `<size>` ∈ {24, 28, 32, 40, 48} and `<suffix>` ∈ {`item`, `non-item`, `color`, or none for plain forms like `graph_model_40.png`}.
+- Quirk: per-artifact icons use `_item` / `_non-item` / plain; per-experience workload icons use `_color`. Pair both families on the same diagram (see § Microsoft Fabric icons for the pane↔artifact mapping).
+- Worked example: `<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Fabric/png/lakehouse_40_item.png>`
+
+**Kubernetes** (`dist/Kubernetes/INDEX.md` · `https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Kubernetes/INDEX.md`)
+- Pattern: `dist/Kubernetes/png/<subdir>/<variant>/<stem>-<size>.png` where `<subdir>` ∈ {`resources`, `control_plane_components`, `infrastructure_components`}, `<variant>` ∈ {`labeled`, `unlabeled`}, `<size>` ∈ {128, 256}.
+- Quirk: subdir-structured (NOT flat). Service is `svc-128.png` (NOT `service-128.png`); Deployment is `deploy-128.png`; ConfigMap is `cm-128.png`; Cloud Controller Manager is `c-c-m-128.png` (hyphenated abbreviation).
+- Worked example: `<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Kubernetes/png/resources/labeled/pod-128.png>`
+
+**FluentUI** (`dist/FluentUI/INDEX.md` · `https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/FluentUI/INDEX.md`)
+- Pattern: `dist/FluentUI/png/<stem>_<size>_color.png` where `<size>` ∈ {24, 32, 48}, `<stem>` is snake_case lowercase matching the upstream concept name (multi-word concepts use `_` not space).
+- Quirk: `_color` variant only is shipped (no `_regular` line-art, no `_filled` mono). Multi-word stems use underscore: `Cloud Dismiss` → `cloud_dismiss`, `Person Add` → `person_add`, `Code Block` → `code_block`.
+- Worked example: `<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/FluentUI/png/cloud_48_color.png>`
+
+**Devicon** (`dist/Devicon/INDEX.md` · `https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Devicon/INDEX.md`)
+- Pattern: `dist/Devicon/png/<stem>-original_48.png` where `<stem>` is the lowercase upstream key.
+- Quirk: `-original` variant + `_48` size only. Some stems use hyphens (`dot-net`, not `dotnet`); some use full words (`googlecloud`, not `gcp`); some keep abbreviations (`vuejs`, `nextjs`, `nodejs`). Always look up the canonical stem in INDEX.md — guessing `gcp.png` instead of `googlecloud-original_48.png` is a 404.
+- Worked example: `<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-architecture-diagrams/main/dist/Devicon/png/python-original_48.png>`
 
 ### Filenames with parentheses (URL encoding required)
 
