@@ -83,8 +83,33 @@ assert_exit "no-arg exits 1 (commander)"   1 node dist/index.js
 assert_exit "bogus  exits 1"               1 node dist/index.js bogus
 assert_exit "unknown agent exits 1"        1 node dist/index.js install --agent=bogus
 assert_exit "--help exits 0"               0 node dist/index.js --help
-assert_exit "version prints exits 0"       0 node dist/index.js --version
+assert_exit "--cli-version prints exits 0" 0 node dist/index.js --cli-version
 assert_exit "install --help exits 0"       0 node dist/index.js install --help
+
+# Step 3b — install assertion + persisted dotfile manifest check.
+# Catches two regression classes the unit tests don't cover:
+#   (1) Commander `--version <semver>` short-circuit (pre-2.6.9): would
+#       short-circuit to the top-level version printer instead of dispatching
+#       to the install action, leaving the target dir empty.
+#   (2) Persisted manifest is a DOTFILE (`.azure-arch-skill-manifest.json`).
+#       Earlier verification commands used `*manifest*` globs which skip
+#       dotfiles by default; the manifest landed but was never inspected.
+#       Use a literal filename here.
+INSTALL_TARGET="${TEST_TARGET_ROOT}/install-target-test"
+if env AZURE_ARCH_SKILL_TARGET_ROOT="${TEST_TARGET_ROOT}" \
+     node dist/index.js install --agent=claude-code --target="${INSTALL_TARGET}" >/dev/null 2>&1; then
+  if [ -f "${INSTALL_TARGET}/SKILL.md" ] && [ -f "${INSTALL_TARGET}/.azure-arch-skill-manifest.json" ]; then
+    echo "PASS  install lands SKILL.md + .azure-arch-skill-manifest.json (literal dotfile path)"
+    PASSED=$((PASSED + 1))
+  else
+    echo "FAIL  install dropped files but persisted manifest dotfile is missing"
+    ls -la "${INSTALL_TARGET}" | head -10
+    FAILED=$((FAILED + 1))
+  fi
+else
+  echo "FAIL  install (default skill version) did not complete"
+  FAILED=$((FAILED + 1))
+fi
 
 # Step 4 — node:test unit tests (parseFrontmatter regression coverage).
 echo "INFO  running unit tests..."
