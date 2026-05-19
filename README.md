@@ -214,7 +214,15 @@ The same list lives co-located with the icons at [`dist/Azure/USAGE-RULES.txt`](
 Bug reports and feature requests go to the [GitHub issue tracker](https://github.com/hanv89/azure-icons-for-architecture-diagrams/issues).
 
 - **Broken raw URL or missing icon** — open an issue with the exact `<img:URL>` that failed and where you used it (Confluence, `play.plantuml.com`, GitHub, …). Icon URLs are pinned by tag, so include the tag or `main`.
-- **Proposing a new icon** — note that every icon here is redistributed unchanged from a first-party MIT upstream (Azure-PlantUML for Azure, `@fabric-msft/svg-icons` for Fabric). New icons have to come from a comparable verified-license source — say which upstream covers the icon you want, and we can audit it.
+- **Proposing a new icon** — note that every icon here is redistributed unchanged from a verified-license upstream (Azure-PlantUML for Azure, `@fabric-msft/svg-icons` for Fabric, `kubernetes/community` for Kubernetes, `microsoft/fluentui-system-icons` for FluentUI, `devicons/devicon` for Devicon). New icons have to come from a comparable source — say which upstream covers the icon you want, and we can audit it.
+
+### Local setup (one-time per clone)
+
+```bash
+make setup
+```
+
+This points `git` at the in-tree pre-push hook (`.githooks/pre-push`) so the leak-check workflow's catches also run locally before any push reaches GitHub, and confirms `node`, `npm`, and `gh` are installed. See the [Makefile](Makefile) for additional smoke-test targets.
 
 ## Footer
 
