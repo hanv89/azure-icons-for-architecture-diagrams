@@ -1,11 +1,16 @@
 name: update-icons
 
-# Weekly cron + manual workflow_dispatch. Watches the two icon upstreams
-# for new releases, opens a refresh PR if anything changed. Gated by two
-# upstream-health monitors (Microsoft ToU re-fetch + Azure-PlantUML
-# archived/disabled flag). If either monitor fires red, the cron
-# short-circuits and opens a watchdog issue instead of pulling possibly-
-# newly-restricted icons.
+# Weekly cron + manual workflow_dispatch. Watches all 5 icon upstreams for
+# new releases and opens a refresh PR if anything changed. Gated by 6 per-
+# vendor monitors:
+#   - monitor_ms_tou.sh                  (Azure Architecture Icons ToU)
+#   - monitor_fabric_tou.sh              (Microsoft Fabric Icons ToU)
+#   - monitor_azure_plantuml_health.sh   (plantuml-stdlib/Azure-PlantUML)
+#   - monitor_kubernetes_health.sh       (kubernetes/community)
+#   - monitor_fluentui_health.sh         (microsoft/fluentui-system-icons)
+#   - monitor_devicon_health.sh          (devicons/devicon)
+# If any monitor fires red, the cron short-circuits and opens a watchdog
+# issue instead of pulling possibly-newly-restricted icons.
 
 on:
   schedule:
@@ -40,10 +45,18 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq librsvg2-bin
 
+      # ---- per-vendor monitors (each continue-on-error; any failure halts the
+      #      cron via the watchdog step below) ----
+
       - name: Microsoft Azure Icons ToU monitor
         id: tou_monitor
         continue-on-error: true
         run: bash scripts/monitor_ms_tou.sh
+
+      - name: Microsoft Fabric Icons ToU monitor
+        id: fabric_tou_monitor
+        continue-on-error: true
+        run: bash scripts/monitor_fabric_tou.sh
 
       - name: Azure-PlantUML upstream-health monitor
         id: health_monitor
@@ -52,24 +65,54 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/monitor_azure_plantuml_health.sh
 
-      - name: Watchdog issue on monitor failure
-        if: steps.tou_monitor.outcome == 'failure' || steps.health_monitor.outcome == 'failure'
+      - name: Kubernetes upstream-health monitor
+        id: kubernetes_health_monitor
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/monitor_kubernetes_health.sh
+
+      - name: FluentUI upstream-health monitor
+        id: fluentui_health_monitor
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/monitor_fluentui_health.sh
+
+      - name: Devicon upstream-health monitor
+        id: devicon_health_monitor
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/monitor_devicon_health.sh
+
+      - name: Watchdog issue on any monitor failure
+        if: >-
+          steps.tou_monitor.outcome == 'failure' ||
+          steps.fabric_tou_monitor.outcome == 'failure' ||
+          steps.health_monitor.outcome == 'failure' ||
+          steps.kubernetes_health_monitor.outcome == 'failure' ||
+          steps.fluentui_health_monitor.outcome == 'failure' ||
+          steps.devicon_health_monitor.outcome == 'failure'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           gh issue create \
             --title "watchdog: upstream monitor failed ($(date -u +%Y-%m-%d))" \
-            --body "$(printf 'monitor_ms_tou.sh outcome: %s\nmonitor_azure_plantuml_health.sh outcome: %s\n\nManual triage required before the next icon refresh.' "${{ steps.tou_monitor.outcome }}" "${{ steps.health_monitor.outcome }}")"
+            --body "$(printf 'monitor_ms_tou.sh:                  %s\nmonitor_fabric_tou.sh:              %s\nmonitor_azure_plantuml_health.sh:   %s\nmonitor_kubernetes_health.sh:       %s\nmonitor_fluentui_health.sh:         %s\nmonitor_devicon_health.sh:          %s\n\nManual triage required before the next icon refresh.' "${{ steps.tou_monitor.outcome }}" "${{ steps.fabric_tou_monitor.outcome }}" "${{ steps.health_monitor.outcome }}" "${{ steps.kubernetes_health_monitor.outcome }}" "${{ steps.fluentui_health_monitor.outcome }}" "${{ steps.devicon_health_monitor.outcome }}")"
           exit 1
 
-      - name: Run build scripts
+      - name: Run build scripts (all 5 vendors)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           bash scripts/build_azure.sh
           bash scripts/build_fabric.sh
+          bash scripts/build_kubernetes.sh
+          bash scripts/build_fluentui_system.sh
+          bash scripts/build_devicon.sh
 
       - name: Open PR if dist/ changed
         env:
@@ -97,11 +140,18 @@ jobs:
         # Catch-all for steps the named monitor-watchdog above doesn't handle
         # (build_*.sh, PR-open, etc). Skip when the monitor watchdog already
         # fired (otherwise we'd create a duplicate issue for the same run).
-        if: failure() && steps.tou_monitor.outcome == 'success' && steps.health_monitor.outcome == 'success'
+        if: >-
+          failure() &&
+          steps.tou_monitor.outcome == 'success' &&
+          steps.fabric_tou_monitor.outcome == 'success' &&
+          steps.health_monitor.outcome == 'success' &&
+          steps.kubernetes_health_monitor.outcome == 'success' &&
+          steps.fluentui_health_monitor.outcome == 'success' &&
+          steps.devicon_health_monitor.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           gh issue create \
             --title "watchdog: update-icons.yml failed ($(date -u +%Y-%m-%d))" \
-            --body "$(printf 'Workflow run: %s/%s/actions/runs/%s\n\nA step in update-icons.yml failed AFTER both upstream monitors passed. Triage the run logs.' "${{ github.server_url }}" "${{ github.repository }}" "${{ github.run_id }}")"
+            --body "$(printf 'Workflow run: %s/%s/actions/runs/%s\n\nA step in update-icons.yml failed AFTER all upstream monitors passed. Triage the run logs.' "${{ github.server_url }}" "${{ github.repository }}" "${{ github.run_id }}")"

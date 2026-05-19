@@ -110,27 +110,49 @@ mkdir -p "${DIST_DIR}"
 OLD_COUNT="$(find "${DIST_DIR}" -name '*.png' 2>/dev/null | wc -l)"
 
 # Build expected-SVG list from curation × sizes; verify every SVG exists upstream
-# (catches curation drift early).
+# (catches curation drift early — every curation stem MUST ship all 3 sizes of
+# the `_color` variant, or the build aborts; partial-shipping is not allowed).
 declare -a JOBS=()
 MISSING=()
+declare -a PARTIAL=()                       # concepts missing ≥1 size but not all 3
 while IFS= read -r concept; do
   case "${concept}" in
     ''|\#*) continue ;;
   esac
   stem="$(echo "${concept}" | tr 'A-Z ' 'a-z_')"
+  concept_missing=0
+  concept_found=0
   for sz in "${SIZES[@]}"; do
     svg="${SOURCE_DIR}/assets/${concept}/SVG/ic_fluent_${stem}_${sz}_color.svg"
     if [ -f "${svg}" ]; then
       JOBS+=("${svg}|${stem}|${sz}")
+      concept_found=$((concept_found + 1))
     else
       MISSING+=("${concept}/${sz} (expected ${svg#${SOURCE_DIR}/})")
+      concept_missing=$((concept_missing + 1))
     fi
   done
+  # Per-concept assertion: if 1 or 2 sizes ship but not all 3, that's a
+  # partial-shipping case. Flag separately so the error message is
+  # actionable: "concept FOO ships some sizes but not all".
+  if [ "${concept_missing}" -gt 0 ] && [ "${concept_found}" -gt 0 ]; then
+    PARTIAL+=("${concept}: ${concept_found}/3 sizes present, ${concept_missing} missing")
+  fi
 done < "${CURATION_LIST}"
 
 if [ ${#MISSING[@]} -gt 0 ]; then
   echo "ERROR: curation list refers to ${#MISSING[@]} missing SVG(s):" >&2
   for m in "${MISSING[@]}"; do echo "  ${m}" >&2; done
+  if [ ${#PARTIAL[@]} -gt 0 ]; then
+    echo "" >&2
+    echo "Partial-shipping concepts (some sizes upstream but not all 3):" >&2
+    for p in "${PARTIAL[@]}"; do echo "  ${p}" >&2; done
+    echo "" >&2
+    echo "Resolution: either re-curate to a concept that ships all 3 sizes," >&2
+    echo "remove the offending concept from scripts/fixtures/fluentui-curation.txt," >&2
+    echo "or extend SIZES[] in this script if upstream now ships at additional sizes." >&2
+  fi
+  echo "" >&2
   echo "Either update curation list or audit upstream changes." >&2
   exit 1
 fi

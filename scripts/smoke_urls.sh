@@ -96,11 +96,17 @@ if [ -d "$DV_DIR" ]; then
     URLS+=("${BASE}/${REL_PATH}|image/")
   done < <(find "$DV_DIR" -name '*-original_48.png' 2>/dev/null | shuf -n 5)
 fi
-# Always probe USAGE-RULES.txt for each icon family (NOTICE-companion artifact).
-URLS+=("${BASE}/dist/Azure/USAGE-RULES.txt|text/plain")
-if [ -f "$REPO_ROOT/dist/Fabric/USAGE-RULES.txt" ]; then
-  URLS+=("${BASE}/dist/Fabric/USAGE-RULES.txt|text/plain")
-fi
+# Always probe USAGE-RULES.txt for each icon family that ships one.
+# All 5 vendors (Azure + Fabric + Kubernetes + FluentUI + Devicon) ship
+# USAGE-RULES.txt; the Kubernetes file documents that the Apache-2.0 /
+# CC-BY-4.0 dual grant imposes no usage restrictions beyond standard license
+# obligations + trademark courtesy (the asymmetry vs Azure/Fabric Don'ts is
+# itself the information the file carries).
+for VENDOR in Azure Fabric Kubernetes FluentUI Devicon; do
+  if [ -f "$REPO_ROOT/dist/${VENDOR}/USAGE-RULES.txt" ]; then
+    URLS+=("${BASE}/dist/${VENDOR}/USAGE-RULES.txt|text/plain")
+  fi
+done
 echo "smoke_urls.sh: sampling ${#URLS[@]} URLs (Azure per-category + Fabric sample + Kubernetes per-subdir + FluentUI per-size + Devicon sample + USAGE-RULES.txt)" >&2
 
 FAILED=0
