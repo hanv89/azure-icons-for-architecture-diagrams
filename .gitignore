@@ -4,3 +4,4 @@ packages/cli/dist/
 packages/cli/*.tgz
 *.log
 .DS_Store
+dist/chat-ui-bundle.zip
