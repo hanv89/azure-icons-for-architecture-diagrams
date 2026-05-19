@@ -27,21 +27,28 @@
 
 set -uo pipefail
 
-# Tracked-file content regex (mirrors workflow, narrow on R-IDs).
-CONTENT_PATTERN='Phase[ -]?[0-9]+\.|D-[0-9]{3}|\bR[0-9]{2,3}\b|sun group|sungroup|phú quốc|head of tech'
-
-# Surface regex (commit messages + branch names) — broader, and matched
-# case-insensitively (see surface scans below): branch names are lowercase
-# (`phase-1.7-...`), so a case-sensitive `Phase` would miss the very surface
-# that leaked historically.
-SURFACE_PATTERN='Phase[ -]?[0-9]+\.|D-[0-9]{3}|\bR[0-9]+\b|sun group|sungroup|phú quốc|head of tech'
+# Load CONTENT_PATTERN + SURFACE_PATTERN from `scripts/leak-patterns.txt` —
+# single source of truth shared with `.github/workflows/leak-check.yml`.
+# Format: KEY=regex, one per line; lines starting with `#` ignored.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LEAK_PATTERNS_FILE="${SCRIPT_DIR}/leak-patterns.txt"
+if [ ! -f "${LEAK_PATTERNS_FILE}" ]; then
+  echo "FAIL: ${LEAK_PATTERNS_FILE} missing — cannot load leak regex" >&2
+  exit 2
+fi
+CONTENT_PATTERN="$(grep -E '^CONTENT_PATTERN=' "${LEAK_PATTERNS_FILE}" | head -1 | cut -d= -f2-)"
+SURFACE_PATTERN="$(grep -E '^SURFACE_PATTERN=' "${LEAK_PATTERNS_FILE}" | head -1 | cut -d= -f2-)"
+if [ -z "${CONTENT_PATTERN}" ] || [ -z "${SURFACE_PATTERN}" ]; then
+  echo "FAIL: CONTENT_PATTERN or SURFACE_PATTERN missing in ${LEAK_PATTERNS_FILE}" >&2
+  exit 2
+fi
 
 EXCLUDED_PATHS=(
   ':!.github/workflows/leak-check.yml'
+  ':!scripts/leak-patterns.txt'
   ':!tests/leak-fixtures.txt'
-  ':!scripts/check-leaks.sh'
 )
-EXCLUDED_PATH_GREP='^(\.github/workflows/leak-check\.yml|tests/leak-fixtures\.txt|scripts/check-leaks\.sh):'
+EXCLUDED_PATH_GREP='^(\.github/workflows/leak-check\.yml|scripts/leak-patterns\.txt|tests/leak-fixtures\.txt):'
 
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
   echo "FAIL: not inside a git repository" >&2
@@ -107,10 +114,25 @@ case "${mode}" in
     content_matches=$(scan_content_files "${range_files}")
     ;;
   pre-push)
-    # Commits in the range remote..local.
+    # Commits in the range remote..local. The exclusion list is built from
+    # every remote-tracking ref AND every local branch tip, so that:
+    #   - new-branch pushes exclude commits reachable from any remote-tracking
+    #     ref (origin/main, fixture/*, etc.) — this is the fix for the
+    #     fixture-rebuild workaround applied in Phases 2.4/2.5/2.6/2.6.5,
+    #     where `--not --remotes` still hit historical commits because the
+    #     range computation included commits the topic branch shared with
+    #     `origin/main` reachable via the local branch's history but unmarked
+    #     by `--remotes` after a delete-then-fresh-push cycle.
+    #   - existing-branch pushes scan only the new commits being added,
+    #     which is what the original `${pre_push_remote}..${pre_push_local}`
+    #     range already does correctly.
     if [ "${pre_push_remote}" = "0000000000000000000000000000000000000000" ]; then
-      commit_range="${pre_push_local}"   # new branch — scan all reachable commits in local that aren't on origin
-      pushed_commits=$(git rev-list "${pre_push_local}" --not --remotes 2>/dev/null || true)
+      commit_range="${pre_push_local}"
+      # Build an explicit exclusion list of every remote-tracking ref to
+      # ensure we exclude historical commits already reachable from any of
+      # them, not just whatever `--remotes` currently expands to.
+      mapfile -t remote_refs < <(git for-each-ref --format='%(refname)' refs/remotes/ 2>/dev/null)
+      pushed_commits=$(git rev-list "${pre_push_local}" --not "${remote_refs[@]}" 2>/dev/null || true)
     else
       commit_range="${pre_push_remote}..${pre_push_local}"
       pushed_commits=$(git rev-list "${commit_range}" 2>/dev/null || true)
