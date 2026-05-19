@@ -78,7 +78,13 @@ jobs:
           /tmp/actionlint -version
 
       - name: actionlint — lint all GitHub Actions workflow YAML
-        run: /tmp/actionlint -color
+        # -shellcheck "-S warning" silences shellcheck info-level findings
+        # (SC2012 ls-vs-find, SC2086 intentional word-splitting in our
+        # release-icons.yml zip-glob and EXCLUDE_NAMES iteration), while
+        # still catching warning + error level issues that indicate real
+        # bugs. actionlint's own YAML/workflow-structure checks run at
+        # full strictness regardless.
+        run: /tmp/actionlint -color -shellcheck "shellcheck -S warning"
 
   fixture-drift:
     runs-on: ubuntu-latest
