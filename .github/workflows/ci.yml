@@ -102,3 +102,14 @@ jobs:
 
       - name: scripts/test_fixture_drift.sh
         run: bash scripts/test_fixture_drift.sh
+
+  bundle-repro:
+    # Verifies dist/chat-ui-bundle.zip is byte-reproducible across two
+    # build runs on the same source tree. Guards against host-clock leakage,
+    # non-sorted file order, or archive-metadata drift in build_chat_ui_bundle.sh.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: scripts/test_chat_ui_bundle_repro.sh
+        run: bash scripts/test_chat_ui_bundle_repro.sh

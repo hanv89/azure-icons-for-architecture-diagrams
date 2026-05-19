@@ -134,6 +134,15 @@ Browse [`dist/Azure/`](dist/Azure/) and [`dist/Fabric/png/`](dist/Fabric/png/) o
 
 Azure filenames containing `(` or `)` (the monochrome variants) must be URL-encoded as `%28` / `%29` when used inside a `<img:URL>` reference. Fabric filenames use `snake_case` and need no encoding.
 
+### C — Chat-UI agents (Claude.ai Project + ChatGPT Custom GPT)
+
+If your primary surface is a chat-UI rather than a CLI/IDE, install the skill into a chat-UI agent's knowledge base via a downloadable bundle ZIP. The bundle ships with every skill release on the [Releases page](https://github.com/hanv89/azure-icons-for-architecture-diagrams/releases) as `chat-ui-bundle.zip`. Setup recipes:
+
+- **Claude.ai Project** — [`docs/chat-ui-distribution/claude-project/`](docs/chat-ui-distribution/claude-project/)
+- **ChatGPT Custom GPT** — [`docs/chat-ui-distribution/chatgpt-gpt/`](docs/chat-ui-distribution/chatgpt-gpt/)
+
+Both recipes upload the same bundle (SKILL.md + per-vendor INDEX catalogs + worked examples + per-vendor USAGE-RULES + NOTICE) as the agent's knowledge files, then paste a short system prompt that routes the model to SKILL.md.
+
 ## CLI reference
 
 `npx @hanv89/azure-arch-skill@latest <command> [flags]`
