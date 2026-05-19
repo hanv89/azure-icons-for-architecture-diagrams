@@ -75,12 +75,24 @@ jobs:
         run: |
           npm publish --provenance --access public --tag "${{ steps.dist.outputs.tag }}"
 
+      - name: Build chat-UI distribution bundle
+        # Mirrors the npm tarball as a downloadable artifact for chat-UI
+        # channels (Claude.ai Project + ChatGPT Custom GPT). The bundle
+        # ZIP is byte-reproducible (verified by the bundle-repro CI job).
+        working-directory: ${{ github.workspace }}
+        run: |
+          bash scripts/build_chat_ui_bundle.sh
+          test -s dist/chat-ui-bundle.zip
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TARBALL=$(ls hanv89-azure-arch-skill-*.tgz | head -1)
           VERSION="${GITHUB_REF_NAME#skill-v}"
-          gh release create "${GITHUB_REF_NAME}" "$TARBALL" \
+          BUNDLE="${{ github.workspace }}/dist/chat-ui-bundle.zip"
+          gh release create "${GITHUB_REF_NAME}" "$TARBALL" "$BUNDLE" \
             --title "Azure arch skill v${VERSION}" \
-            --notes "Release v${VERSION} of @hanv89/azure-arch-skill. Published with Sigstore provenance attestation via Trusted Publisher OIDC."
+            --notes "Release v${VERSION} of @hanv89/azure-arch-skill. Published with Sigstore provenance attestation via Trusted Publisher OIDC.
+
+The chat-ui-bundle.zip asset packages SKILL.md + per-vendor INDEX catalogs + worked examples + per-vendor USAGE-RULES + NOTICE for upload into a chat-UI agent's knowledge base (Claude.ai Project or ChatGPT Custom GPT). Setup recipes live under docs/chat-ui-distribution/ on this repo."
