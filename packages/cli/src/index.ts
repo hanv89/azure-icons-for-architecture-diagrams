@@ -8,7 +8,12 @@ import { runOverAll, Subcommand } from "./all";
 const program = new Command()
   .name("azure-arch-skill")
   .description("Install the Azure architecture diagram skill into your AI coding agent.")
-  .version(pkg.version, "-V, --version");
+  // Top-level flag uses `--cli-version` (not `--version`) so subcommand
+  // `--version <semver>` (skill pin) dispatches correctly. Earlier shipping
+  // cycles bound both at `--version`; Commander short-circuited to the
+  // top-level printer before invoking the subcommand action, breaking
+  // documented tag-pin examples.
+  .version(pkg.version, "-V, --cli-version");
 
 const VERSION_RE = /^\d+\.\d+\.\d+$/;
 
@@ -18,12 +23,10 @@ function defineSubcommand(name: Subcommand, description: string): void {
     .description(description)
     .requiredOption("--agent <name>", `target AI agent (${SUPPORTED_TARGETS.join("|")})`)
     .option("--target <dir>", "override target directory (validation use)")
-    // NOTE: the top-level program also exposes `-V, --version` (prints
-    // `pkg.version`). This subcommand-scoped `--version <semver>` is
-    // distinct: it pins which skill bundle to fetch. Commander disambiguates
-    // them by scope; user-facing help text shows both. Renaming this to
-    // `--pin` was considered but rejected to avoid breaking documented
-    // examples in attestations.
+    // Subcommand-scoped `--version <semver>` pins which skill bundle to
+    // fetch. Distinct from the top-level `--cli-version` flag which prints
+    // the CLI tool's own version. The two are namespaced cleanly now that
+    // the top-level flag is renamed.
     .option("--version <semver>", "pin to a specific skill version (X.Y.Z); default = latest from main")
     .action(async (opts) => {
       // Validate --version pre-dispatch as defense-in-depth; baseUrl() in

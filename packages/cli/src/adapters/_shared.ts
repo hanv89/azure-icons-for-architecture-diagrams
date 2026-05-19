@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { load as yamlLoad } from "js-yaml";
 import pkg from "../../package.json";
 import type { Adapter, InstallOptions, UninstallOptions, UpdateOptions, ListOptions } from "./types";
 
@@ -265,31 +266,33 @@ export async function fetchManifest(base: string): Promise<Manifest> {
 }
 
 /**
- * Minimal YAML frontmatter parser — supports only single-line scalar `key: value`
- * pairs with optional `"` or `'` quoting. Multi-line scalars (`|`, `>`), nested
- * mappings, lists, comments after `#`, and YAML null/booleans are NOT handled
- * and may silently mis-parse.
+ * YAML frontmatter parser. Uses `js-yaml` to handle the full YAML spec
+ * (folded scalars `>`, literal block scalars `|`, quoted strings, comments,
+ * nested mappings, etc) so SKILL.md frontmatter can grow beyond simple
+ * `key: value` pairs without silent mis-parses.
  *
- * Intentional: SKILL.md frontmatter currently has 4 single-line scalar keys
- * (name, description, version, requires_icons). Swap in `js-yaml` when the
- * format grows beyond that.
+ * Returns only the 3 keys the CLI cares about (`name`, `version`,
+ * `requires_icons`); other top-level keys are ignored.
  */
 export function parseFrontmatter(md: string): Frontmatter {
   const text = md.replace(/^﻿/, "");
   const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match) return {};
+  let parsed: unknown;
+  try {
+    parsed = yamlLoad(match[1]);
+  } catch (err) {
+    return {};
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+  const obj = parsed as Record<string, unknown>;
   const out: Frontmatter = {};
-  for (const line of match[1].split(/\r?\n/)) {
-    const kv = line.match(/^(\w+):\s*(.*?)\s*$/);
-    if (!kv) continue;
-    const [, key] = kv;
-    let rawValue = kv[2];
-    if (!rawValue.startsWith('"') && !rawValue.startsWith("'")) {
-      rawValue = rawValue.replace(/\s+#.*$/, "");
-    }
-    const value = rawValue.replace(/^["']|["']$/g, "");
-    if (key === "name" || key === "version" || key === "requires_icons") {
-      out[key] = value;
+  for (const key of ["name", "version", "requires_icons"] as const) {
+    const raw = obj[key];
+    if (typeof raw === "string") {
+      out[key] = raw;
+    } else if (typeof raw === "number") {
+      out[key] = String(raw);
     }
   }
   return out;

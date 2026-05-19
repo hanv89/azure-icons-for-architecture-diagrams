@@ -29,6 +29,30 @@ test("parseFrontmatter: no frontmatter returns empty object", () => {
   assert.deepEqual(parseFrontmatter("# just a markdown heading\nbody"), {});
 });
 
+test("parseFrontmatter: folded scalar (>) multi-line description handled", () => {
+  // js-yaml folded-scalar form joins continuation lines with spaces; SKILL.md
+  // descriptions have grown multi-sentence in recent shipping cycles. The
+  // pre-2.6.9 hand-rolled parser ignored this; verify js-yaml-based parser
+  // still extracts the keys the CLI cares about (name, version,
+  // requires_icons) even when description spans lines.
+  const md = [
+    "---",
+    "name: foo",
+    "description: >",
+    "  This is a multi-line description",
+    "  that wraps across several lines",
+    "  using YAML folded-scalar syntax.",
+    "version: 2.3.4",
+    "requires_icons: \">=2.3.0\"",
+    "---",
+    "body",
+  ].join("\n");
+  const fm = parseFrontmatter(md);
+  assert.equal(fm.name, "foo");
+  assert.equal(fm.version, "2.3.4");
+  assert.equal(fm.requires_icons, ">=2.3.0");
+});
+
 test("parseFrontmatter: missing closing --- returns empty object", () => {
   assert.deepEqual(parseFrontmatter("---\nname: foo\nbody"), {});
 });
