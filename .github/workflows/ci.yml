@@ -63,14 +63,18 @@ jobs:
           # SHA256 checksums alongside the release artifacts. We fetch the
           # checksums file from the same release and verify the binary
           # archive against it, so the tag-pin alone is not the security
-          # boundary.
-          curl -fsSL -o /tmp/actionlint.tar.gz \
+          # boundary. Filenames must match what the checksums file references
+          # so `sha256sum -c -` can find the archive.
+          mkdir -p /tmp/actionlint-dl
+          cd /tmp/actionlint-dl
+          curl -fsSL -O \
             https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
-          curl -fsSL -o /tmp/actionlint-checksums.txt \
+          curl -fsSL -O \
             https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_checksums.txt
-          ( cd /tmp && grep 'linux_amd64\.tar\.gz$' actionlint-checksums.txt | sha256sum -c - )
-          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
-          chmod +x /tmp/actionlint
+          grep 'linux_amd64\.tar\.gz$' actionlint_1.7.12_checksums.txt | sha256sum -c -
+          tar -xzf actionlint_1.7.12_linux_amd64.tar.gz actionlint
+          chmod +x actionlint
+          mv actionlint /tmp/actionlint
           /tmp/actionlint -version
 
       - name: actionlint — lint all GitHub Actions workflow YAML
