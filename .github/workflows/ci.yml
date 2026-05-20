@@ -68,6 +68,9 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
+      - name: Install librsvg2-bin (rsvg-convert) for build-script unit tests
+        run: sudo apt-get update && sudo apt-get install -y librsvg2-bin
+
       - name: scripts/_lib_icon_build.test.sh
         run: bash scripts/_lib_icon_build.test.sh
 
