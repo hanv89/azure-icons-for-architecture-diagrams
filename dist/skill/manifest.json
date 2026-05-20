@@ -1,7 +1,7 @@
 {
   "$schema": "./manifest.schema.json",
   "name": "azure-architecture-diagram",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "requires_icons": ">=1.4.0",
   "icons_version": "1.4.0",
   "files": [
@@ -15,6 +15,7 @@
     { "src": "dist/skill/examples/07-azure-aks-mixed.puml",      "dest": "examples/07-azure-aks-mixed.puml",      "role": "example" },
     { "src": "dist/skill/examples/08-azure-fluentui-mixed.puml", "dest": "examples/08-azure-fluentui-mixed.puml", "role": "example" },
     { "src": "dist/skill/examples/09-devops-pipeline.puml",      "dest": "examples/09-devops-pipeline.puml",      "role": "example" },
-    { "src": "dist/skill/examples/10-edit-existing.puml",        "dest": "examples/10-edit-existing.puml",        "role": "example" }
+    { "src": "dist/skill/examples/10-edit-existing.puml",        "dest": "examples/10-edit-existing.puml",        "role": "example" },
+    { "src": "dist/skill/examples/11-mermaid-architecture.mmd",  "dest": "examples/11-mermaid-architecture.mmd",  "role": "example" }
   ]
 }

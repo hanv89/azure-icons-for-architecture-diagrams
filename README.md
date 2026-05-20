@@ -143,6 +143,10 @@ If your primary surface is a chat-UI rather than a CLI/IDE, install the skill in
 
 Both recipes upload the same bundle (SKILL.md + per-vendor INDEX catalogs + worked examples + per-vendor USAGE-RULES + NOTICE) as the agent's knowledge files, then paste a short system prompt that routes the model to SKILL.md.
 
+### Mermaid mode (icon-light, GitHub-native)
+
+The skill is **PlantUML-first** because PlantUML is the only diagram-as-code language that embeds the project's hosted vendor PNGs inline (`<img:URL>`). For diagrams that should **render natively in GitHub Markdown** with no hosting dependency, the skill also supports a **Mermaid mode** — see SKILL.md § "Mermaid mode" and [`dist/skill/examples/11-mermaid-architecture.mmd`](dist/skill/examples/11-mermaid-architecture.mmd). Note: Mermaid is **icon-light** (it cannot embed the vendor PNGs the way PlantUML does — nodes are text-labelled with the product word-mark). For branded vendor-icon diagrams, use PlantUML.
+
 ## CLI reference
 
 `npx @hanv89/azure-arch-skill@latest <command> [flags]`

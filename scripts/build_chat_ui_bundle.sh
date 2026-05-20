@@ -5,7 +5,7 @@
 #   - README.md             (top-level "what's in this bundle + how to use")
 #   - SKILL.md              (copy of dist/skill/SKILL.md)
 #   - NOTICE                (copy of repo-root NOTICE)
-#   - examples/<NN-name>.puml         (all dist/skill/examples/*.puml flat)
+#   - examples/<NN-name>.{puml,mmd}   (all dist/skill/examples/*.{puml,mmd} flat)
 #   - indexes/<Vendor>-INDEX.md       (per-vendor catalog, 5 files)
 #   - usage-rules/<Vendor>-USAGE-RULES.txt (per-vendor licence/trademark, 5 files)
 #
@@ -74,8 +74,9 @@ mkdir -p "${STAGE}/examples" "${STAGE}/indexes" "${STAGE}/usage-rules"
 cp "${SKILL_SRC}"  "${STAGE}/SKILL.md"
 cp "${NOTICE_SRC}" "${STAGE}/NOTICE"
 
-# Examples — flatten dist/skill/examples/*.puml into examples/.
-for f in "${EXAMPLES_SRC_DIR}"/*.puml; do
+# Examples — flatten dist/skill/examples/*.{puml,mmd} into examples/
+# (.puml = PlantUML, .mmd = Mermaid; both are worked diagram examples).
+for f in "${EXAMPLES_SRC_DIR}"/*.puml "${EXAMPLES_SRC_DIR}"/*.mmd; do
   [ -e "${f}" ] || continue
   cp "${f}" "${STAGE}/examples/$(basename "${f}")"
 done
@@ -99,7 +100,7 @@ agent's knowledge base (claude.ai Project or ChatGPT Custom GPT).
 
 - `SKILL.md` — the canonical skill content. Read first.
 - `NOTICE` — per-vendor attribution + trademark notices.
-- `examples/*.puml` — worked diagram examples (9 files).
+- `examples/` — worked diagram examples (`.puml` = PlantUML, `.mmd` = Mermaid).
 - `indexes/<Vendor>-INDEX.md` — per-vendor icon catalogs (5 files: Azure,
   Fabric, Kubernetes, FluentUI, Devicon). Look up filenames here before
   emitting `<img:URL>` tokens — see SKILL.md § "Filename rule (non-negotiable)".

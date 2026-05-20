@@ -1,7 +1,7 @@
 ---
 name: azure-architecture-diagram
 description: Use this skill when creating Microsoft Azure, Microsoft Fabric, Kubernetes, Microsoft Fluent UI-decorated, or Devicon dev-tool architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric + Kubernetes + FluentUI + Devicon), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline, mixed AKS deployment, UI-decorated Azure, DevOps pipeline with dev tools), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram", "Kubernetes deployment diagram", "AKS architecture", "K8s Pod + Service + Deployment diagram", "diagram with status icons", "Azure with user/auth/data icons", "devops pipeline diagram", "draw [language/framework/tool] in architecture".
-version: 1.5.0
+version: 1.6.0
 requires_icons: ">=1.4.0"
 ---
 
@@ -697,6 +697,40 @@ Rules for an edit:
 If the user pastes a diagram that uses `!define` macros or guessed filenames, fix those to literal INDEX-verified URLs as part of the edit (and say so), since they would otherwise render broken.
 
 See [`examples/10-edit-existing.puml`](examples/10-edit-existing.puml) for a worked before/after edit (adding a cache node to an existing 3-tier diagram).
+
+## Mermaid mode
+
+This skill is **PlantUML-first** because PlantUML is the only diagram-as-code language that embeds the project's hosted vendor PNGs inline via `<img:URL>`. But Mermaid renders **natively in GitHub Markdown** (no `plantuml.com` proxy) and is often the faster choice for a quick topology. The skill supports a Mermaid mode for those cases.
+
+### When to use which
+
+| Use **PlantUML** (default) when… | Use **Mermaid** when… |
+|---|---|
+| You want the official vendor icons (Azure/Fabric/Kubernetes/FluentUI/Devicon) shown as images | You want a diagram that renders inline on GitHub with zero hosting dependency |
+| The diagram is for Confluence / a doc where icon fidelity matters | You want a quick topology / flow and text labels are fine |
+| The user asks for "branded" / "icon" diagrams | The user says "Mermaid", "render on GitHub", or "no icons needed" |
+
+### The icon limitation (read before choosing Mermaid)
+
+**Mermaid has no `<img:URL>` parity.** It cannot embed arbitrary remote PNGs the way PlantUML does:
+
+- Mermaid `flowchart` nodes are text/shape only — no inline remote images.
+- Mermaid `architecture-beta` (v11+) can show icons, but **only from icon packs the rendering environment has registered** via `registerIconPacks`. GitHub's native Mermaid renderer registers **no custom packs**, so this project's vendor logos will **not** appear on GitHub.
+
+So **Mermaid mode is icon-light**: emit correct topology with **text-labelled nodes**, and **label every node with the product word-mark** (e.g. `Azure Front Door`, `AKS`, `Azure SQL Database`) — the word-mark substitutes for the missing icon and keeps the diagram unambiguous. If the user needs the actual vendor icons, stay on PlantUML and say why.
+
+### Minimal Mermaid syntax
+
+```mermaid
+flowchart TB
+  subgraph app["Azure 3-tier web app"]
+    fd["Azure Front Door"] --> svc["App Service"]
+    svc --> sql["Azure SQL Database"]
+    svc --> redis["Cache for Redis"]
+  end
+```
+
+Fence the block with ` ```mermaid ` so GitHub renders it. See [`examples/11-mermaid-architecture.mmd`](examples/11-mermaid-architecture.mmd) for a fuller worked topology. For icon-rich vendor diagrams, prefer the PlantUML examples (`01`–`10`).
 
 ## Troubleshooting
 
