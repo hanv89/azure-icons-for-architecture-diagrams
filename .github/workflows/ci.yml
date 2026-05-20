@@ -117,6 +117,9 @@ jobs:
       - name: scripts/test_icon_sync_completeness.sh
         run: bash scripts/test_icon_sync_completeness.sh
 
+      - name: scripts/lint_examples.sh
+        run: bash scripts/lint_examples.sh
+
   actionlint:
     runs-on: ubuntu-latest
     steps:
