@@ -26,11 +26,24 @@ const RAW_BASE = "https://raw.githubusercontent.com/hanv89/azure-icons-for-archi
 const args = process.argv.slice(2);
 const tfPath = args.find((a) => !a.startsWith("--"));
 const refIdx = args.indexOf("--ref");
-const ref = refIdx >= 0 ? args[refIdx + 1] : "main";
 
 if (!tfPath) {
   console.error("usage: node scripts/iac_to_diagram.mjs <path-to.tf> [--ref <git-ref>]");
   process.exit(2);
+}
+
+// --ref is interpolated into the emitted <img:URL>; validate it as a git ref
+// so a stray value can't inject markup or a path-traversal fetch target, and
+// a missing value can't become the literal string "undefined" in every URL.
+// Recommended: pass --ref icons-vX.Y.Z for output pinned to a released snapshot.
+let ref = "main";
+if (refIdx >= 0) {
+  const val = args[refIdx + 1];
+  if (!val || val.startsWith("--") || !/^[A-Za-z0-9._/-]+$/.test(val) || val.includes("..")) {
+    console.error(`ERROR: --ref must be a git ref matching [A-Za-z0-9._/-]+ with no '..' (got: ${val === undefined ? "<missing>" : JSON.stringify(val)})`);
+    process.exit(2);
+  }
+  ref = val;
 }
 
 // --- load the icon map (type -> {path,label}) ---
@@ -42,29 +55,48 @@ for (const line of mapText.split("\n")) {
   if (type && path && label) map.set(type.trim(), { path: path.trim(), label: label.trim() });
 }
 
-let tf;
+let tfRaw;
 try {
-  tf = readFileSync(tfPath, "utf8");
+  tfRaw = readFileSync(tfPath, "utf8");
 } catch (e) {
   console.error(`ERROR: cannot read ${tfPath}: ${e.message}`);
   process.exit(2);
 }
 
-// --- extract resource blocks (brace-balanced, best-effort) ---
+// Strip whole-line comments (#... and //...) so a commented-out `resource`
+// block is not parsed as a real resource (phantom node). Block comments
+// (/* */) and inline trailing comments are left as-is — best-effort; the
+// brace-balancer below is string-aware so braces inside string values do not
+// desync block slicing. Known limitation: braces inside heredocs (<<EOF) are
+// not specially handled (documented in README).
+const tf = tfRaw
+  .split("\n")
+  .filter((l) => !/^\s*(#|\/\/)/.test(l))
+  .join("\n");
+
+// --- extract resource blocks (string-aware brace-balanced, best-effort) ---
 const resources = []; // {type, name, alias, body}
 const re = /resource\s+"(azurerm_[a-z0-9_]+)"\s+"([A-Za-z0-9_-]+)"\s*\{/g;
 let m;
 while ((m = re.exec(tf)) !== null) {
   const [, type, name] = m;
-  // brace-balance from the opening { to find the block body
+  // brace-balance from the opening {; ignore braces inside "..." string values
   let depth = 1;
+  let inStr = false;
   let i = re.lastIndex;
   for (; i < tf.length && depth > 0; i++) {
-    if (tf[i] === "{") depth++;
-    else if (tf[i] === "}") depth--;
+    const c = tf[i];
+    if (inStr) {
+      if (c === "\\") { i++; continue; } // skip escaped char
+      if (c === '"') inStr = false;
+    } else if (c === '"') {
+      inStr = true;
+    } else if (c === "{") depth++;
+    else if (c === "}") depth--;
   }
   const body = tf.slice(re.lastIndex, i - 1);
   resources.push({ type, name, alias: `${type}__${name}`.replace(/[^A-Za-z0-9_]/g, "_"), body });
+  re.lastIndex = i; // resume scanning after this block
 }
 
 if (resources.length === 0) {

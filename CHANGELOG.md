@@ -6,6 +6,19 @@ Drafted on 2026-05-14 from existing GitHub Release tags. From `skill-v0.10.0` on
 
 ---
 
+## skill-v1.6.1 — 2026-05-21
+
+- Post-review fixes: hardened the experimental Terraform→PlantUML generator (`iac_to_diagram.mjs`) — strips commented-out resources, validates `--ref` as a git ref, and skips braces inside string values; new `lint_examples.sh` contract gate (Mermaid `.mmd` sanity + no stray `@startuml`/`@enduml` in `.puml` examples).
+- SKILL.md: "Available examples" now lists the Mermaid example (`11`); frontmatter description + Setup pointers cover Mermaid mode and the IaC generator.
+
+## skill-v1.6.0 — 2026-05-21
+
+- New **Mermaid mode**: SKILL.md § "Mermaid mode" (when to use vs PlantUML; the icon-light limitation — Mermaid cannot embed the vendor PNGs the way PlantUML does) + worked example `examples/11-mermaid-architecture.mmd` (text-labelled topology, renders natively on GitHub). The chat-UI bundle now includes `.mmd` examples. PlantUML stays the primary mode for branded vendor-icon diagrams.
+
+## skill-v1.5.0 — 2026-05-21
+
+- New **diagram edit/revise workflow**: SKILL.md § "Editing an existing diagram" (preserve the diagram scaffold + layout anchors, make the minimal diff, INDEX-verified icon swaps) + worked before/after example `examples/10-edit-existing.puml` (adds a Redis cache to a 3-tier diagram).
+
 ## skill-v1.4.2 — 2026-05-19
 
 - CLI: top-level version flag renamed `-V, --cli-version` so the subcommand `install --version <semver>` no longer short-circuits to the version printer and correctly pins the bundle source.

@@ -163,9 +163,9 @@ and infers edges from Terraform references (`<type>.<name>`) between resources.
 
 **Scope + limitations (experimental):**
 - **Terraform `azurerm` only** (a curated subset of ~24 common resource types). Bicep / CloudFormation / AWS / GCP are not supported yet.
-- **Best-effort regex extraction** — no HCL modules, `for_each`/`count`, interpolation, or data sources.
+- **Best-effort regex extraction** — no HCL modules, `for_each`/`count`, interpolation, or data sources. Whole-line `#`/`//` comments are stripped before parsing, and braces inside `"..."` string values are handled; **but braces inside heredocs (`<<EOF`) are not** and can mis-slice blocks — sanity-check the output if your `.tf` uses heredocs.
 - **Unknown resource types are not dropped** — they render as plain text-labelled nodes and are listed in a coverage report on stderr, so you can see what was and wasn't iconified.
-- Pin the icon `git-ref` with `--ref <tag>` (default `main`).
+- Pin the icon `git-ref` with `--ref <tag>` (e.g. `--ref icons-v1.4.0`) for output stable against a released icon snapshot; the default `main` tracks the latest icons. `--ref` is validated as a git ref.
 
 This is a starting point for IaC-driven diagrams; coverage expands as the map grows. Contributions to the map table are welcome.
 
@@ -211,7 +211,7 @@ This is a starting point for IaC-driven diagrams; coverage expands as the map gr
 
 ## Project status
 
-The icon library is at `icons-v1.4.0` and the skill bundle (plus its npm package `@hanv89/azure-arch-skill`) is at `skill-v1.4.2`. The two tracks are independent and versioned separately, tied together by the skill's `requires_icons` range.
+The icon library is at `icons-v1.4.0` and the skill bundle (plus its npm package `@hanv89/azure-arch-skill`) is at `skill-v1.6.1`. The two tracks are independent and versioned separately, tied together by the skill's `requires_icons` range. The skill now also supports an icon-light Mermaid mode + an experimental Terraform→PlantUML generator (see § "Mermaid mode" and § "IaC → diagram").
 
 Both tracks carry a SemVer compatibility commitment: within the `1.x` line, the CLI flag surface and the skill's install contract will not break — breaking changes wait for `2.0.0`. The icon library follows the same SemVer discipline on its own track.
 

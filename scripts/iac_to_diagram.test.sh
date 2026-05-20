@@ -63,6 +63,31 @@ grep -q 'azurerm_dns_zone: main' "${OUT}" \
   && pass "unmapped resource still rendered as a text node" \
   || fail "unmapped resource was dropped from the diagram"
 
+# --- 6. adversarial: commented-out resource is NOT emitted (phantom node) ---
+CMT="$(mktemp)"
+printf 'resource "azurerm_resource_group" "real" {\n  name = "rg"\n}\n# resource "azurerm_storage_account" "fake" {\n}\n' > "${CMT}"
+if node scripts/iac_to_diagram.mjs "${CMT}" 2>/dev/null | grep -q 'fake'; then
+  fail "commented-out resource emitted as a phantom node"
+else
+  pass "commented-out resource ignored (no phantom node)"
+fi
+rm -f "${CMT}"
+
+# --- 7. adversarial: brace inside a string value does not drop later resources ---
+BR="$(mktemp)"
+printf 'resource "azurerm_resource_group" "a" {\n  name = "weird{brace"\n}\nresource "azurerm_key_vault" "b" {\n  name = "kv"\n}\n' > "${BR}"
+n="$(node scripts/iac_to_diagram.mjs "${BR}" 2>/dev/null | grep -c '^rectangle ')"
+[ "${n}" -eq 2 ] && pass "brace-in-string did not desync block slicing (2 nodes)" || fail "brace-in-string mis-parse: got ${n} nodes, expected 2"
+rm -f "${BR}"
+
+# --- 8. adversarial: --ref validation ---
+node scripts/iac_to_diagram.mjs "${SAMPLE}" --ref '../../etc' >/dev/null 2>&1
+[ "$?" -eq 2 ] && pass "path-traversal --ref rejected (exit 2)" || fail "bad --ref not rejected"
+node scripts/iac_to_diagram.mjs "${SAMPLE}" --ref >/dev/null 2>&1
+[ "$?" -eq 2 ] && pass "missing --ref value rejected (exit 2)" || fail "missing --ref value not rejected"
+node scripts/iac_to_diagram.mjs "${SAMPLE}" --ref icons-v1.4.0 >/dev/null 2>&1
+[ "$?" -eq 0 ] && pass "valid --ref accepted (exit 0)" || fail "valid --ref rejected"
+
 echo
 echo "Summary: ${PASSED} passed, ${FAILED} failed."
 [ "${FAILED}" -eq 0 ] || exit 1

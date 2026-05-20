@@ -1,7 +1,7 @@
 ---
 name: azure-architecture-diagram
-description: Use this skill when creating Microsoft Azure, Microsoft Fabric, Kubernetes, Microsoft Fluent UI-decorated, or Devicon dev-tool architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric + Kubernetes + FluentUI + Devicon), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline, mixed AKS deployment, UI-decorated Azure, DevOps pipeline with dev tools), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram", "Kubernetes deployment diagram", "AKS architecture", "K8s Pod + Service + Deployment diagram", "diagram with status icons", "Azure with user/auth/data icons", "devops pipeline diagram", "draw [language/framework/tool] in architecture".
-version: 1.6.0
+description: Use this skill when creating Microsoft Azure, Microsoft Fabric, Kubernetes, Microsoft Fluent UI-decorated, or Devicon dev-tool architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric + Kubernetes + FluentUI + Devicon), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline, mixed AKS deployment, UI-decorated Azure, DevOps pipeline with dev tools), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram", "Kubernetes deployment diagram", "AKS architecture", "K8s Pod + Service + Deployment diagram", "diagram with status icons", "Azure with user/auth/data icons", "devops pipeline diagram", "draw [language/framework/tool] in architecture", "edit/update an existing diagram", "Mermaid architecture diagram", "render on GitHub", "diagram from Terraform". Primary output is PlantUML with embedded vendor icons; a secondary icon-light Mermaid mode (§ "Mermaid mode") is available for GitHub-native rendering, and an experimental Terraform→PlantUML generator exists (see the repo README).
+version: 1.6.1
 requires_icons: ">=1.4.0"
 ---
 
@@ -55,6 +55,8 @@ rectangle "<img:https://raw.githubusercontent.com/hanv89/azure-icons-for-archite
 If a downstream PlantUML rendering pipeline applies a global transform that would crop / flip / rotate Microsoft icons, the agent must explicitly disable it for icon images, even if that means refusing to emit the diagram and asking the user to remove the offending pipeline step.
 
 ## Setup
+
+> **Output modes**: this skill is PlantUML-first (vendor icons embedded via `<img:URL>`). For a GitHub-native, icon-light diagram, see § "Mermaid mode". To generate a starting diagram from a Terraform file, see the repo README § "IaC → diagram (experimental)". To revise a diagram the user already has, see § "Editing an existing diagram".
 
 Every diagram should include 3 setup blocks. Use **literal URLs** in every `<img:URL>` reference (see § "Do not use `!define` macros for icon URLs" below).
 
@@ -730,7 +732,7 @@ flowchart TB
   end
 ```
 
-Fence the block with ` ```mermaid ` so GitHub renders it. See [`examples/11-mermaid-architecture.mmd`](examples/11-mermaid-architecture.mmd) for a fuller worked topology. For icon-rich vendor diagrams, prefer the PlantUML examples (`01`–`10`).
+Fence the block with ` ```mermaid ` so GitHub renders it. See [`examples/11-mermaid-architecture.mmd`](examples/11-mermaid-architecture.mmd) for a fuller worked topology. For icon-rich vendor diagrams, prefer the branded PlantUML examples (`01`–`09`).
 
 ## Troubleshooting
 
@@ -785,3 +787,4 @@ Renderable example diagrams live in `examples/` (file list mirrors `manifest.jso
 - [`08-azure-fluentui-mixed.puml`](examples/08-azure-fluentui-mixed.puml) — Azure web architecture decorated with FluentUI UI affordances (Cloud boundary, Shield + Person Add for auth, status indicators, organisation context). Canonical Azure + FluentUI mixed example, added in `icons-v1.3.0` / `skill-v1.3.0`.
 - [`09-devops-pipeline.puml`](examples/09-devops-pipeline.puml) — DevOps pipeline from source (GitHub) through CI/CD (GitHub Actions + Argo CD) into AKS / Kubernetes runtime, with Prometheus + Grafana observability and a Postgres data store. Canonical Devicon-decorated DevOps example, added in `icons-v1.4.0` / `skill-v1.4.0`.
 - [`10-edit-existing.puml`](examples/10-edit-existing.puml) — worked before/after **edit** of an existing 3-tier diagram (adds a Redis cache node + re-wires it) demonstrating the § "Editing an existing diagram" minimal-diff workflow. Added in `skill-v1.5.0`.
+- [`11-mermaid-architecture.mmd`](examples/11-mermaid-architecture.mmd) — **Mermaid** (`.mmd`, not PlantUML) text-labelled topology demonstrating § "Mermaid mode" (icon-light, renders natively on GitHub). Added in `skill-v1.6.0`.
