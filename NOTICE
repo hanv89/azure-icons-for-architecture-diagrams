@@ -1,17 +1,34 @@
 azure-icons-for-architecture-diagrams
 Copyright (c) 2026 hanv89
 
-This repository hosts Microsoft Azure architecture icons (sourced via
-the plantuml-stdlib/Azure-PlantUML upstream redistribution) AND
-Microsoft Fabric icons (sourced from the @fabric-msft/svg-icons npm
-package, published directly by Microsoft Corporation under MIT) for
-use in architecture diagrams, training materials, and documentation
-as permitted by Microsoft's Azure Architecture Icons Terms of Use and
-Microsoft's Fabric icon Terms of Use respectively.
+This repository hosts icons from five upstream sources for use in
+architecture diagrams, training materials, and documentation:
 
-This project is not affiliated with or endorsed by Microsoft Corporation.
-All Microsoft product names and icons are trademarks of Microsoft
-Corporation.
+  - Microsoft Azure architecture icons (via the plantuml-stdlib/
+    Azure-PlantUML upstream redistribution, MIT).
+  - Microsoft Fabric icons (via the @fabric-msft/svg-icons npm package,
+    published directly by Microsoft Corporation under MIT).
+  - Kubernetes icons (via kubernetes/community, CNCF / Linux Foundation,
+    Apache-2.0 OR CC-BY-4.0 dual grant).
+  - Microsoft FluentUI System Icons (via microsoft/fluentui-system-icons,
+    published by Microsoft Corporation under MIT).
+  - Devicon dev-tool icons (via devicons/devicon, community-maintained,
+    MIT, Copyright (c) 2015 konpa).
+
+The Microsoft icons (Azure, Fabric, FluentUI) are used as permitted by
+Microsoft's Azure Architecture Icons Terms of Use, Microsoft's Fabric
+icon Terms of Use, and the Microsoft Trademark and Brand Guidelines.
+The Kubernetes icons are used under the dual Apache-2.0 / CC-BY-4.0
+grant, with the Kubernetes trademark used per the Linux Foundation
+Trademark Usage policy. The Devicon icons are redistributed in
+unmodified form under Devicon's MIT grant; each icon depicts a
+third-party brand whose trademark policy applies separately to use.
+
+This project is not affiliated with or endorsed by Microsoft Corporation,
+the Cloud Native Computing Foundation, the Linux Foundation, the Devicon
+project, or any of the third-party brands whose products are depicted by
+the Devicon icons. All product names and icons are trademarks of their
+respective owners.
 
 ================================================================================
 THIRD-PARTY NOTICES
