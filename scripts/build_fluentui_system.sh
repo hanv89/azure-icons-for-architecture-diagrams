@@ -56,9 +56,15 @@ while [ $# -gt 0 ]; do
 done
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SOURCE_DIR="${REPO_ROOT}/source/fluentui-system-icons"
-DIST_DIR="${REPO_ROOT}/dist/FluentUI/png"
-CURATION_LIST="${REPO_ROOT}/scripts/fixtures/fluentui-curation.txt"
+# SOURCE_DIR / DIST_DIR / CURATION_LIST / record path are overridable via env
+# so the build logic can be unit-tested against a synthetic fixture upstream
+# tree (BUILD_SELFTEST=1 skips the network clone + count floor). Production
+# defaults are unchanged.
+SOURCE_DIR="${BUILD_SOURCE_DIR:-${REPO_ROOT}/source/fluentui-system-icons}"
+DIST_DIR="${BUILD_DIST_DIR:-${REPO_ROOT}/dist/FluentUI/png}"
+CURATION_LIST="${BUILD_CURATION_LIST:-${REPO_ROOT}/scripts/fixtures/fluentui-curation.txt}"
+UPSTREAM_RECORD="${BUILD_UPSTREAM_RECORD:-${REPO_ROOT}/dist/FluentUI/UPSTREAM-SHA.txt}"
+SELFTEST="${BUILD_SELFTEST:-0}"
 UPSTREAM_REPO="${UPSTREAM_REPO:-https://github.com/microsoft/fluentui-system-icons.git}"
 SIZES=(24 32 48)
 
@@ -67,35 +73,42 @@ command -v git           >/dev/null 2>&1 || { echo "ERROR: git not installed" >&
 command -v rsvg-convert  >/dev/null 2>&1 || { echo "ERROR: rsvg-convert not installed (apt install librsvg2-bin)" >&2; exit 2; }
 [ -f "${CURATION_LIST}" ] || { echo "ERROR: curation list not found at ${CURATION_LIST}" >&2; exit 2; }
 
-# ---- Upstream branch auto-detect ----
-UPSTREAM_BRANCH="${UPSTREAM_BRANCH:-}"
-if [ -z "${UPSTREAM_BRANCH}" ]; then
-  UPSTREAM_BRANCH=$(git ls-remote --symref "${UPSTREAM_REPO}" HEAD 2>/dev/null \
-                    | head -1 | awk '/^ref:/ {print $2}' | sed 's|refs/heads/||')
-fi
-if [ -z "${UPSTREAM_BRANCH}" ]; then
-  echo "ERROR: cannot detect upstream default branch from ${UPSTREAM_REPO}" >&2
-  exit 2
-fi
-echo "Upstream: ${UPSTREAM_REPO} branch=${UPSTREAM_BRANCH}"
-
-# ---- 1. Ensure upstream cloned (shallow, detected branch) ----
-if [ ! -d "${SOURCE_DIR}/.git" ]; then
-  echo "Cloning fluentui-system-icons upstream..."
-  mkdir -p "${REPO_ROOT}/source"
-  git clone --depth 1 --branch "${UPSTREAM_BRANCH}" "${UPSTREAM_REPO}" "${SOURCE_DIR}" || {
-    echo "ERROR: clone failed" >&2; exit 2
-  }
+# ---- Upstream sync (skipped in self-test: SOURCE_DIR is pre-populated) ----
+if [ "${SELFTEST}" = "1" ]; then
+  UPSTREAM_BRANCH="selftest"
+  UPSTREAM_SHA="selftest"
+  echo "SELFTEST: using pre-populated SOURCE_DIR=${SOURCE_DIR} (no clone)"
 else
-  echo "Refreshing existing clone..."
-  git -C "${SOURCE_DIR}" fetch --depth 1 origin "${UPSTREAM_BRANCH}" || {
-    echo "ERROR: fetch failed" >&2; exit 2
-  }
-  git -C "${SOURCE_DIR}" reset --hard "origin/${UPSTREAM_BRANCH}"
-fi
+  # ---- Upstream branch auto-detect ----
+  UPSTREAM_BRANCH="${UPSTREAM_BRANCH:-}"
+  if [ -z "${UPSTREAM_BRANCH}" ]; then
+    UPSTREAM_BRANCH=$(git ls-remote --symref "${UPSTREAM_REPO}" HEAD 2>/dev/null \
+                      | head -1 | awk '/^ref:/ {print $2}' | sed 's|refs/heads/||')
+  fi
+  if [ -z "${UPSTREAM_BRANCH}" ]; then
+    echo "ERROR: cannot detect upstream default branch from ${UPSTREAM_REPO}" >&2
+    exit 2
+  fi
+  echo "Upstream: ${UPSTREAM_REPO} branch=${UPSTREAM_BRANCH}"
 
-UPSTREAM_SHA="$(git -C "${SOURCE_DIR}" rev-parse HEAD)"
-echo "Upstream SHA: ${UPSTREAM_SHA}"
+  # ---- 1. Ensure upstream cloned (shallow, detected branch) ----
+  if [ ! -d "${SOURCE_DIR}/.git" ]; then
+    echo "Cloning fluentui-system-icons upstream..."
+    mkdir -p "${REPO_ROOT}/source"
+    git clone --depth 1 --branch "${UPSTREAM_BRANCH}" "${UPSTREAM_REPO}" "${SOURCE_DIR}" || {
+      echo "ERROR: clone failed" >&2; exit 2
+    }
+  else
+    echo "Refreshing existing clone..."
+    git -C "${SOURCE_DIR}" fetch --depth 1 origin "${UPSTREAM_BRANCH}" || {
+      echo "ERROR: fetch failed" >&2; exit 2
+    }
+    git -C "${SOURCE_DIR}" reset --hard "origin/${UPSTREAM_BRANCH}"
+  fi
+
+  UPSTREAM_SHA="$(git -C "${SOURCE_DIR}" rev-parse HEAD)"
+  echo "Upstream SHA: ${UPSTREAM_SHA}"
+fi
 
 # ---- 2. MIT licence re-verification gate ----
 LICENSE_HEAD=$(head -1 "${SOURCE_DIR}/LICENSE" 2>/dev/null || true)
@@ -175,12 +188,12 @@ for job in "${JOBS[@]}"; do
 done
 
 # ---- 6. Persist UPSTREAM-SHA.txt ----
-write_upstream_record "${REPO_ROOT}/dist/FluentUI/UPSTREAM-SHA.txt" "${UPSTREAM_SHA}"
+write_upstream_record "${UPSTREAM_RECORD}" "${UPSTREAM_SHA}"
 
 # ---- 7. Verify ----
 COUNT="$(find "${DIST_DIR}" -name '*.png' | wc -l)"
 echo "PNG count: ${COUNT}"
-if [ "${COUNT}" -lt 50 ]; then
+if [ "${SELFTEST}" != "1" ] && [ "${COUNT}" -lt 50 ]; then
   echo "ERROR: count < 50, aborting (expected ~75 across 25 curated concepts × 3 sizes)" >&2
   exit 1
 fi
