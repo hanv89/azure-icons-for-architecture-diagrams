@@ -1,6 +1,6 @@
-# Azure + Fabric Icons for Architecture Diagrams
+# Architecture-Diagram Icons (Azure · Fabric · Kubernetes · FluentUI · Devicon)
 
-Microsoft Azure architecture icons and Microsoft Fabric icons in PNG, ready for diagram-as-code via PlantUML's `<img:URL>` syntax. Redistributed from Microsoft-first-party MIT upstreams; reachable as public raw URLs so any PlantUML renderer (the public `plantuml.com` server, the Confluence app, the VS Code extension, GitHub's inline renderer) can fetch them at render time.
+Cloud + dev-tool icons in PNG, ready for diagram-as-code via PlantUML's `<img:URL>` syntax. Five upstream sources — Microsoft Azure, Microsoft Fabric, Kubernetes (CNCF), Microsoft FluentUI System Icons, and Devicon dev-tool brand icons — redistributed from verified-license upstreams and reachable as public raw URLs so any PlantUML renderer (the public `plantuml.com` server, the Confluence app, the VS Code extension, GitHub's inline renderer) can fetch them at render time.
 
 ## Quick-start
 
@@ -185,38 +185,46 @@ Both recipes upload the same bundle (SKILL.md + per-vendor INDEX catalogs + work
 
 ## Project status
 
-Both tracks have shipped `v1.0.0` — `icons-v1.0.0` for the icon library and `skill-v1.0.0` for the skill bundle plus its npm package. The two tracks are independent and versioned separately, tied together by the skill's `requires_icons` range.
+The icon library is at `icons-v1.4.0` and the skill bundle (plus its npm package `@hanv89/azure-arch-skill`) is at `skill-v1.4.2`. The two tracks are independent and versioned separately, tied together by the skill's `requires_icons` range.
 
-`v1.0.0` carries a SemVer compatibility commitment: within the `1.x` line, the CLI flag surface and the skill's install contract will not break — breaking changes wait for `2.0.0`. The icon library follows the same SemVer discipline on its own track.
+Both tracks carry a SemVer compatibility commitment: within the `1.x` line, the CLI flag surface and the skill's install contract will not break — breaking changes wait for `2.0.0`. The icon library follows the same SemVer discipline on its own track.
+
+The skill is also distributable to chat-UI agents (Claude.ai Project + ChatGPT Custom GPT) via the downloadable `chat-ui-bundle.zip` attached to each skill release — see [§ Quick-start C](#c--chat-ui-agents-claudeai-project--chatgpt-custom-gpt) and [`docs/chat-ui-distribution/`](docs/chat-ui-distribution/).
 
 ## Icon sources
 
-This repository redistributes icons from two upstream tracks:
+This repository redistributes icons from five upstream sources, each with a verified license grant (see [`NOTICE`](NOTICE) for the full per-source attribution chain):
 
-- **Microsoft Azure architecture icons** — sourced via the [Azure-PlantUML](https://github.com/plantuml-stdlib/Azure-PlantUML) community redistribution (MIT). Current pin: see [`dist/Azure/UPSTREAM-SHA.txt`](dist/Azure/UPSTREAM-SHA.txt). 528 PNGs across 22 categories (`AIMachineLearning`, `Analytics`, `Compute`, `Containers`, `Networking`, `Storage`, etc.), each shipping in two variants: colored (`AzureVirtualMachine.png`) and monochrome (`AzureVirtualMachine(m).png`).
-- **Microsoft Fabric icons** — sourced from the [`@fabric-msft/svg-icons`](https://www.npmjs.com/package/@fabric-msft/svg-icons) npm package (Microsoft first-party, MIT). Current pin: see [`dist/Fabric/UPSTREAM-VERSION.txt`](dist/Fabric/UPSTREAM-VERSION.txt). 312 PNGs across 5 sizes (24, 28, 32, 40, 48) and four families: `_item` (per-artifact, e.g. `lakehouse_40_item.png`), `_non-item` (workspaces / action verbs), `_color` (per-experience workload brand icons, e.g. `power_bi_48_color.png`), and plain (`graph_model_40.png`).
+- **Microsoft Azure architecture icons** — via the [Azure-PlantUML](https://github.com/plantuml-stdlib/Azure-PlantUML) community redistribution (MIT). Pin: [`dist/Azure/UPSTREAM-SHA.txt`](dist/Azure/UPSTREAM-SHA.txt). 528 PNGs across 22 categories, each in two variants: colored (`AzureVirtualMachine.png`) and monochrome (`AzureVirtualMachine(m).png`).
+- **Microsoft Fabric icons** — via the [`@fabric-msft/svg-icons`](https://www.npmjs.com/package/@fabric-msft/svg-icons) npm package (Microsoft first-party, MIT). Pin: [`dist/Fabric/UPSTREAM-VERSION.txt`](dist/Fabric/UPSTREAM-VERSION.txt). 312 PNGs across 5 sizes and four families (`_item`, `_non-item`, `_color`, plain).
+- **Kubernetes icons** — via [`kubernetes/community`](https://github.com/kubernetes/community/tree/master/icons) (CNCF / Linux Foundation, Apache-2.0 OR CC-BY-4.0 dual grant). Pin: [`dist/Kubernetes/UPSTREAM-SHA.txt`](dist/Kubernetes/UPSTREAM-SHA.txt). 148 PNGs (control-plane + workload resource icons). `Kubernetes` is a registered Linux Foundation trademark — see the [LF Trademark Usage](https://www.linuxfoundation.org/trademark-usage/) policy.
+- **Microsoft FluentUI System Icons** — via [`microsoft/fluentui-system-icons`](https://github.com/microsoft/fluentui-system-icons) (Microsoft first-party, MIT). Pin: [`dist/FluentUI/UPSTREAM-SHA.txt`](dist/FluentUI/UPSTREAM-SHA.txt). 75 PNGs — a curated decorator subset (25 concepts × 3 sizes, `_color` variant).
+- **Devicon dev-tool icons** — via [`devicons/devicon`](https://github.com/devicons/devicon) (community-maintained, MIT, © 2015 konpa). Pin: [`dist/Devicon/UPSTREAM-SHA.txt`](dist/Devicon/UPSTREAM-SHA.txt). 149 PNGs — a curated dev-tool brand mosaic (`-original` variant at 48px). Each icon depicts a third-party brand whose trademark policy applies separately to *use*; Devicon's MIT grant covers redistribution of the icon files only.
 
-Both families are governed by Microsoft's [Trademark and Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general) plus the family-specific Microsoft Terms of Use. See [`NOTICE`](NOTICE) for the full attribution chain and `dist/<family>/USAGE-RULES.txt` for the verbatim Don'ts list.
+Each vendor directory ships a `USAGE-RULES.txt` co-located with the icons (where AI agents and scanners reading the directory are most likely to encounter it).
 
 ## License
 
 - **Source code** in this repository (CLI, build scripts, workflows): MIT-licensed. See [`LICENSE`](LICENSE).
-- **Icons**: the icons themselves are Microsoft trademarks. Their use is governed by the [Microsoft Azure Architecture Icons Terms of Use](https://learn.microsoft.com/en-us/azure/architecture/icons/), the Microsoft Fabric icon Terms of Use, and the Microsoft Trademark and Brand Guidelines linked above. See [`NOTICE`](NOTICE) for full third-party attribution and the verbatim Terms snapshots captured at the time the icons were imported.
+- **Icons**: redistributed under each upstream's license, with trademark layers preserved per source. See [`NOTICE`](NOTICE) for the full attribution chain and the verbatim Terms snapshots captured at import time:
+  - **Microsoft Azure + Fabric + FluentUI** — governed by the relevant Microsoft Terms of Use ([Azure Architecture Icons ToU](https://learn.microsoft.com/en-us/azure/architecture/icons/), Fabric icon ToU) plus the [Microsoft Trademark and Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general). File licensing is MIT (Fabric + FluentUI are first-party MIT; Azure via the Azure-PlantUML MIT mirror).
+  - **Kubernetes** — Apache-2.0 OR CC-BY-4.0 dual grant; `Kubernetes` trademark per the [LF Trademark Usage](https://www.linuxfoundation.org/trademark-usage/) policy.
+  - **Devicon** — MIT (community-maintained). Each icon depicts a third-party brand; the depicted brands' trademark policies apply separately to use.
 
-### By using these icons, you agree to Microsoft's Terms
+### By using these icons, you agree to the applicable upstream terms
 
-By fetching, embedding, or otherwise using the Microsoft icons from this repository, you agree to the Microsoft Azure Architecture Icons Terms of Use, the Microsoft Fabric icon Terms of Use, and the Microsoft Trademark and Brand Guidelines. This repository propagates those terms; it does not, and cannot, modify them.
+By fetching, embedding, or otherwise using icons from this repository, you agree to the upstream license + trademark terms for the relevant vendor (above). This repository propagates those terms; it does not, and cannot, modify them.
 
 ### Restrictions on icon use
 
-Verbatim from Microsoft (both Azure and Fabric tracks):
+For the **Microsoft** tracks (Azure, Fabric, FluentUI), verbatim from Microsoft:
 
 - Don't crop, flip, or rotate icons.
 - Don't distort or change icon shape in any way.
 - Don't use Microsoft product icons to represent your product or service.
 - Use only for architectural diagrams, training materials, or documentation.
 
-The same list lives co-located with the icons at [`dist/Azure/USAGE-RULES.txt`](dist/Azure/USAGE-RULES.txt) and [`dist/Fabric/USAGE-RULES.txt`](dist/Fabric/USAGE-RULES.txt), where AI agents and scanners reading the icon directory are most likely to encounter it.
+For **Kubernetes** and **Devicon**, the underlying licenses (Apache-2.0/CC-BY-4.0 and MIT respectively) carry no equivalent use-restriction; the constraint is trademark-only (don't imply endorsement, label the icon with the depicted product's name). Each vendor's `dist/<Vendor>/USAGE-RULES.txt` states its specific rules — Azure ([`dist/Azure/USAGE-RULES.txt`](dist/Azure/USAGE-RULES.txt)), Fabric ([`dist/Fabric/USAGE-RULES.txt`](dist/Fabric/USAGE-RULES.txt)), Kubernetes ([`dist/Kubernetes/USAGE-RULES.txt`](dist/Kubernetes/USAGE-RULES.txt)), FluentUI ([`dist/FluentUI/USAGE-RULES.txt`](dist/FluentUI/USAGE-RULES.txt)), Devicon ([`dist/Devicon/USAGE-RULES.txt`](dist/Devicon/USAGE-RULES.txt)).
 
 ## Contributing
 

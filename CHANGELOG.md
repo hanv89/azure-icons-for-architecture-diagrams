@@ -6,6 +6,67 @@ Drafted on 2026-05-14 from existing GitHub Release tags. From `skill-v0.10.0` on
 
 ---
 
+## skill-v1.4.2 — 2026-05-19
+
+- CLI: top-level version flag renamed `-V, --cli-version` so the subcommand `install --version <semver>` no longer short-circuits to the version printer and correctly pins the bundle source.
+- CLI: frontmatter parser replaced with `js-yaml` (handles folded scalars + multi-line description values); `js-yaml@4.1.1` added as a runtime dependency.
+- CLI: dependency refresh (TypeScript 5.9.3, `@types/node` 22.18.0); `npm audit` clean.
+- New `Makefile` with a one-time `make setup` (enables the leak-check pre-push hook + verifies prerequisites) plus `smoke-cli` / `smoke-urls` / `test-fixture-drift` shortcuts.
+- Content-only skill bump; icons unchanged at `icons-v1.4.0`.
+- Chat-UI distribution: `chat-ui-bundle.zip` (SKILL.md + per-vendor INDEX + worked examples + per-vendor USAGE-RULES + NOTICE) attached to this release for upload into a Claude.ai Project or ChatGPT Custom GPT; setup recipes under `docs/chat-ui-distribution/`. Bundle build is byte-reproducible (`scripts/build_chat_ui_bundle.sh` + `bundle-repro` CI job).
+
+## skill-v1.4.1 — 2026-05-18
+
+- SKILL.md filename-enforcement hardening: a non-negotiable rule that every `<img:URL>` filename be copied verbatim from the relevant per-vendor `INDEX.md` (guessing a filename returns a silent 404 / broken image), plus a casing-quirks table, a WRONG/RIGHT anti-example, and a per-vendor INDEX guide.
+- Content-only skill bump; icons unchanged at `icons-v1.4.0`.
+
+## icons-v1.4.0 — 2026-05-18
+
+- Added the Devicon dev-tool icon set: 149 curated dev-tool brand icons (`-original` variant at 48px) from `devicons/devicon` (MIT, community-maintained). Brings the library to five vendors (Azure + Fabric + Kubernetes + FluentUI + Devicon).
+
+## skill-v1.4.0 — 2026-05-18
+
+- Skill covers all five icon sources; added a DevOps-pipeline worked example (`09-devops-pipeline.puml`) combining Devicon dev tools + Azure + Kubernetes.
+- `release-icons.yml` excludes non-vendor companion directories from the per-vendor release zips.
+
+## icons-v1.3.0 — 2026-05-18
+
+- Added the Microsoft FluentUI System Icons decorator subset: 75 PNGs (25 curated concepts × 3 sizes, `_color` variant) from `microsoft/fluentui-system-icons` (MIT, first-party).
+
+## skill-v1.3.0 — 2026-05-18
+
+- Added a UI-decorated worked example (`08-azure-fluentui-mixed.puml`) — Azure backbone with FluentUI status/action decorators.
+
+## skill-v1.2.1 — 2026-05-17
+
+- Fixed an incorrect `AzureSqlDatabase` filename in the mixed AKS example (`07-azure-aks-mixed.puml`).
+- `release-icons.yml` auto-discovers `dist/<Vendor>/` directories when building per-vendor release zips.
+
+## icons-v1.2.0 — 2026-05-17
+
+- Added the Kubernetes icon set: 148 PNGs from `kubernetes/community` (CNCF / Linux Foundation, Apache-2.0 OR CC-BY-4.0 dual grant).
+
+## skill-v1.2.0 — 2026-05-17
+
+- Added a mixed Azure + Kubernetes worked example (`07-azure-aks-mixed.puml`).
+- Added `docs/marketplace-listings.md` (public skill-index decision matrix).
+
+## icons-v1.1.0 — 2026-05-16
+
+- Per-vendor `INDEX.md` catalogs added under each `dist/<Vendor>/` directory (flat, greppable: path + human name + description + tags) to support filename lookup.
+
+## skill-v1.1.0 — 2026-05-16
+
+- SKILL.md instructs agents to fetch the relevant per-vendor `INDEX.md` and look up icon filenames before emitting `<img:URL>` tokens.
+
+## icons-v1.0.0 — 2026-05-14
+
+- First `1.0.0` icon-library release (Azure + Fabric); SemVer compatibility commitment begins on the icons track.
+
+## skill-v1.0.0 — 2026-05-14
+
+- First `1.0.0` skill release: multi-agent install (Claude Code, Codex CLI, Cursor), full CLI reference, troubleshooting guide, and a self-service onboarding UAT kit. SemVer compatibility commitment begins on the skill track.
+
 ## skill-v0.10.0 — 2026-05-14
 
 - Cursor adapter `update` now short-circuits to a no-op when the installed `.mdc` provenance version matches the upstream manifest version (parity with Claude Code + Codex from v0.9.0).
