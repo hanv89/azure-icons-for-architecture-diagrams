@@ -66,43 +66,56 @@ while [ $# -gt 0 ]; do
 done
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SOURCE_DIR="${REPO_ROOT}/source/kubernetes-community"
-DIST_DIR="${REPO_ROOT}/dist/Kubernetes/png"
+# SOURCE_DIR / DIST_DIR / record path are overridable via env so the copy +
+# zero-byte-drop logic can be unit-tested against a synthetic fixture upstream
+# tree (BUILD_SELFTEST=1 skips the network clone + count floor). Production
+# defaults are unchanged.
+SOURCE_DIR="${BUILD_SOURCE_DIR:-${REPO_ROOT}/source/kubernetes-community}"
+DIST_DIR="${BUILD_DIST_DIR:-${REPO_ROOT}/dist/Kubernetes/png}"
+UPSTREAM_RECORD="${BUILD_UPSTREAM_RECORD:-${REPO_ROOT}/dist/Kubernetes/UPSTREAM-SHA.txt}"
+SELFTEST="${BUILD_SELFTEST:-0}"
 UPSTREAM_REPO="${UPSTREAM_REPO:-https://github.com/kubernetes/community.git}"
 
 # ---- Tooling probe ----
 command -v git    >/dev/null 2>&1 || { echo "ERROR: git not installed" >&2; exit 2; }
 command -v rsync  >/dev/null 2>&1 || { echo "ERROR: rsync not installed" >&2; exit 2; }
 
-# ---- Upstream branch auto-detect (item a) ----
-UPSTREAM_BRANCH="${UPSTREAM_BRANCH:-}"
-if [ -z "${UPSTREAM_BRANCH}" ]; then
-  UPSTREAM_BRANCH=$(git ls-remote --symref "${UPSTREAM_REPO}" HEAD 2>/dev/null \
-                    | head -1 | awk '/^ref:/ {print $2}' | sed 's|refs/heads/||')
-fi
-if [ -z "${UPSTREAM_BRANCH}" ]; then
-  echo "ERROR: cannot detect upstream default branch from ${UPSTREAM_REPO}" >&2
-  exit 2
-fi
-echo "Upstream: ${UPSTREAM_REPO} branch=${UPSTREAM_BRANCH}"
-
-# ---- 1. Ensure upstream cloned (shallow, detected branch) ----
-if [ ! -d "${SOURCE_DIR}/.git" ]; then
-  echo "Cloning kubernetes/community upstream..."
-  mkdir -p "${REPO_ROOT}/source"
-  git clone --depth 1 --branch "${UPSTREAM_BRANCH}" "${UPSTREAM_REPO}" "${SOURCE_DIR}" || {
-    echo "ERROR: clone failed" >&2; exit 2
-  }
+# ---- Upstream sync (skipped in self-test: SOURCE_DIR is pre-populated) ----
+if [ "${SELFTEST}" = "1" ]; then
+  UPSTREAM_BRANCH="selftest"
+  UPSTREAM_SHA="selftest"
+  echo "SELFTEST: using pre-populated SOURCE_DIR=${SOURCE_DIR} (no clone)"
 else
-  echo "Refreshing existing clone..."
-  git -C "${SOURCE_DIR}" fetch --depth 1 origin "${UPSTREAM_BRANCH}" || {
-    echo "ERROR: fetch failed" >&2; exit 2
-  }
-  git -C "${SOURCE_DIR}" reset --hard "origin/${UPSTREAM_BRANCH}"
-fi
+  # ---- Upstream branch auto-detect (item a) ----
+  UPSTREAM_BRANCH="${UPSTREAM_BRANCH:-}"
+  if [ -z "${UPSTREAM_BRANCH}" ]; then
+    UPSTREAM_BRANCH=$(git ls-remote --symref "${UPSTREAM_REPO}" HEAD 2>/dev/null \
+                      | head -1 | awk '/^ref:/ {print $2}' | sed 's|refs/heads/||')
+  fi
+  if [ -z "${UPSTREAM_BRANCH}" ]; then
+    echo "ERROR: cannot detect upstream default branch from ${UPSTREAM_REPO}" >&2
+    exit 2
+  fi
+  echo "Upstream: ${UPSTREAM_REPO} branch=${UPSTREAM_BRANCH}"
 
-UPSTREAM_SHA="$(git -C "${SOURCE_DIR}" rev-parse HEAD)"
-echo "Upstream SHA: ${UPSTREAM_SHA}"
+  # ---- 1. Ensure upstream cloned (shallow, detected branch) ----
+  if [ ! -d "${SOURCE_DIR}/.git" ]; then
+    echo "Cloning kubernetes/community upstream..."
+    mkdir -p "${REPO_ROOT}/source"
+    git clone --depth 1 --branch "${UPSTREAM_BRANCH}" "${UPSTREAM_REPO}" "${SOURCE_DIR}" || {
+      echo "ERROR: clone failed" >&2; exit 2
+    }
+  else
+    echo "Refreshing existing clone..."
+    git -C "${SOURCE_DIR}" fetch --depth 1 origin "${UPSTREAM_BRANCH}" || {
+      echo "ERROR: fetch failed" >&2; exit 2
+    }
+    git -C "${SOURCE_DIR}" reset --hard "origin/${UPSTREAM_BRANCH}"
+  fi
+
+  UPSTREAM_SHA="$(git -C "${SOURCE_DIR}" rev-parse HEAD)"
+  echo "Upstream SHA: ${UPSTREAM_SHA}"
+fi
 
 # ---- 2. Drop-threshold gate (items b + c) ----
 mkdir -p "${DIST_DIR}"
@@ -136,12 +149,12 @@ find "${DIST_DIR}" -name '*.png' -size 0 -delete
 find "${DIST_DIR}" -type d -empty -delete
 
 # ---- 6. Persist UPSTREAM-SHA.txt (item e) ----
-write_upstream_record "${REPO_ROOT}/dist/Kubernetes/UPSTREAM-SHA.txt" "${UPSTREAM_SHA}"
+write_upstream_record "${UPSTREAM_RECORD}" "${UPSTREAM_SHA}"
 
 # ---- 7. Verify ----
 COUNT="$(find "${DIST_DIR}" -name '*.png' | wc -l)"
 echo "PNG count: ${COUNT}"
-if [ "${COUNT}" -lt 130 ]; then
+if [ "${SELFTEST}" != "1" ] && [ "${COUNT}" -lt 130 ]; then
   echo "ERROR: count < 130, aborting (expected ~148 K8s PNGs after dropping upstream zero-byte placeholders)" >&2
   exit 1
 fi

@@ -18,7 +18,14 @@ permissions:
 
 jobs:
   test:
+    # Two-LTS rolling window: the engines.node floor is >=20, so CI must
+    # validate both currently-active LTS lines (Node 20 + 22), not just the
+    # floor.
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['20', '22']
     defaults:
       run:
         working-directory: packages/cli
@@ -26,10 +33,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Setup Node 20
+      - name: Setup Node ${{ matrix.node-version }}
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
         run: npm ci
@@ -37,10 +44,32 @@ jobs:
       - name: Run tests
         run: npm test
 
+  smoke:
+    # The CLI build + exit-code-contract + install-to-disk smoke (smoke_cli)
+    # and the engines-floor + icons-unreachable smoke (smoke_e2e). These were
+    # manual-only before; gating them stops a broken install path from landing.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Setup Node 20
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+
+      - name: scripts/smoke_cli.sh
+        run: bash scripts/smoke_cli.sh
+
+      - name: scripts/smoke_e2e.sh
+        run: bash scripts/smoke_e2e.sh
+
   bash-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Install librsvg2-bin (rsvg-convert) for build-script unit tests
+        run: sudo apt-get update && sudo apt-get install -y librsvg2-bin
 
       - name: scripts/_lib_icon_build.test.sh
         run: bash scripts/_lib_icon_build.test.sh
@@ -50,6 +79,40 @@ jobs:
 
       - name: scripts/build_icon_index.test.sh
         run: bash scripts/build_icon_index.test.sh
+
+      - name: scripts/build_devicon.test.sh
+        run: bash scripts/build_devicon.test.sh
+
+      - name: scripts/build_fluentui_system.test.sh
+        run: bash scripts/build_fluentui_system.test.sh
+
+      - name: scripts/build_kubernetes.test.sh
+        run: bash scripts/build_kubernetes.test.sh
+
+      - name: scripts/build_azure.test.sh
+        run: bash scripts/build_azure.test.sh
+
+      - name: scripts/build_fabric.test.sh
+        run: bash scripts/build_fabric.test.sh
+
+  contract:
+    # Offline contract gates: the shipped dist/ + skill bundle must be
+    # internally consistent. No network. See each script's header.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: scripts/validate_manifest.sh
+        run: bash scripts/validate_manifest.sh
+
+      - name: scripts/test_skill_refs.sh
+        run: bash scripts/test_skill_refs.sh
+
+      - name: scripts/test_index_integrity.sh
+        run: bash scripts/test_index_integrity.sh
+
+      - name: scripts/test_icon_sync_completeness.sh
+        run: bash scripts/test_icon_sync_completeness.sh
 
   actionlint:
     runs-on: ubuntu-latest

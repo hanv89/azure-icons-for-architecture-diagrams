@@ -43,39 +43,50 @@ while [ $# -gt 0 ]; do
 done
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SOURCE_DIR="${REPO_ROOT}/source/Azure-PlantUML"
-DIST_DIR="${REPO_ROOT}/dist/Azure"
+# SOURCE_DIR / DIST_DIR are overridable via env so the copy logic can be
+# unit-tested against a synthetic fixture upstream tree (BUILD_SELFTEST=1
+# skips the network clone + count floor). Production defaults are unchanged.
+SOURCE_DIR="${BUILD_SOURCE_DIR:-${REPO_ROOT}/source/Azure-PlantUML}"
+DIST_DIR="${BUILD_DIST_DIR:-${REPO_ROOT}/dist/Azure}"
+SELFTEST="${BUILD_SELFTEST:-0}"
 UPSTREAM_REPO="${UPSTREAM_REPO:-https://github.com/plantuml-stdlib/Azure-PlantUML.git}"
 
-# ---- Upstream branch auto-detect (item a) ----
-UPSTREAM_BRANCH="${UPSTREAM_BRANCH:-}"
-if [ -z "${UPSTREAM_BRANCH}" ]; then
-  UPSTREAM_BRANCH=$(git ls-remote --symref "${UPSTREAM_REPO}" HEAD 2>/dev/null \
-                    | head -1 | awk '/^ref:/ {print $2}' | sed 's|refs/heads/||')
-fi
-if [ -z "${UPSTREAM_BRANCH}" ]; then
-  echo "ERROR: cannot detect upstream default branch from ${UPSTREAM_REPO}" >&2
-  exit 2
-fi
-echo "Upstream: ${UPSTREAM_REPO} branch=${UPSTREAM_BRANCH}"
-
-# ---- 1. Ensure upstream cloned (shallow, detected branch) ----
-if [ ! -d "${SOURCE_DIR}/.git" ]; then
-  echo "Cloning Azure-PlantUML upstream..."
-  mkdir -p "${REPO_ROOT}/source"
-  git clone --depth 1 --branch "${UPSTREAM_BRANCH}" "${UPSTREAM_REPO}" "${SOURCE_DIR}" || {
-    echo "ERROR: clone failed" >&2; exit 2
-  }
+# ---- Upstream sync (skipped in self-test: SOURCE_DIR is pre-populated) ----
+if [ "${SELFTEST}" = "1" ]; then
+  UPSTREAM_BRANCH="selftest"
+  UPSTREAM_SHA="selftest"
+  echo "SELFTEST: using pre-populated SOURCE_DIR=${SOURCE_DIR} (no clone)"
 else
-  echo "Refreshing existing clone..."
-  git -C "${SOURCE_DIR}" fetch --depth 1 origin "${UPSTREAM_BRANCH}" || {
-    echo "ERROR: fetch failed" >&2; exit 2
-  }
-  git -C "${SOURCE_DIR}" reset --hard "origin/${UPSTREAM_BRANCH}"
-fi
+  # ---- Upstream branch auto-detect (item a) ----
+  UPSTREAM_BRANCH="${UPSTREAM_BRANCH:-}"
+  if [ -z "${UPSTREAM_BRANCH}" ]; then
+    UPSTREAM_BRANCH=$(git ls-remote --symref "${UPSTREAM_REPO}" HEAD 2>/dev/null \
+                      | head -1 | awk '/^ref:/ {print $2}' | sed 's|refs/heads/||')
+  fi
+  if [ -z "${UPSTREAM_BRANCH}" ]; then
+    echo "ERROR: cannot detect upstream default branch from ${UPSTREAM_REPO}" >&2
+    exit 2
+  fi
+  echo "Upstream: ${UPSTREAM_REPO} branch=${UPSTREAM_BRANCH}"
 
-UPSTREAM_SHA="$(git -C "${SOURCE_DIR}" rev-parse HEAD)"
-echo "Upstream SHA: ${UPSTREAM_SHA}"
+  # ---- 1. Ensure upstream cloned (shallow, detected branch) ----
+  if [ ! -d "${SOURCE_DIR}/.git" ]; then
+    echo "Cloning Azure-PlantUML upstream..."
+    mkdir -p "${REPO_ROOT}/source"
+    git clone --depth 1 --branch "${UPSTREAM_BRANCH}" "${UPSTREAM_REPO}" "${SOURCE_DIR}" || {
+      echo "ERROR: clone failed" >&2; exit 2
+    }
+  else
+    echo "Refreshing existing clone..."
+    git -C "${SOURCE_DIR}" fetch --depth 1 origin "${UPSTREAM_BRANCH}" || {
+      echo "ERROR: fetch failed" >&2; exit 2
+    }
+    git -C "${SOURCE_DIR}" reset --hard "origin/${UPSTREAM_BRANCH}"
+  fi
+
+  UPSTREAM_SHA="$(git -C "${SOURCE_DIR}" rev-parse HEAD)"
+  echo "Upstream SHA: ${UPSTREAM_SHA}"
+fi
 
 # ---- 2. Drop-threshold gate (items b + c) ----
 mkdir -p "${DIST_DIR}"
@@ -106,7 +117,7 @@ write_upstream_record "${DIST_DIR}/UPSTREAM-SHA.txt" "${UPSTREAM_SHA}"
 # ---- 7. Verify ----
 COUNT="$(find "${DIST_DIR}" -name '*.png' | wc -l)"
 echo "PNG count: ${COUNT}"
-if [ "${COUNT}" -lt 500 ]; then
+if [ "${SELFTEST}" != "1" ] && [ "${COUNT}" -lt 500 ]; then
   echo "ERROR: count < 500, aborting" >&2
   exit 1
 fi
