@@ -51,6 +51,25 @@ jobs:
       - name: scripts/build_icon_index.test.sh
         run: bash scripts/build_icon_index.test.sh
 
+  contract:
+    # Offline contract gates: the shipped dist/ + skill bundle must be
+    # internally consistent. No network. See each script's header.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: scripts/validate_manifest.sh
+        run: bash scripts/validate_manifest.sh
+
+      - name: scripts/test_skill_refs.sh
+        run: bash scripts/test_skill_refs.sh
+
+      - name: scripts/test_index_integrity.sh
+        run: bash scripts/test_index_integrity.sh
+
+      - name: scripts/test_icon_sync_completeness.sh
+        run: bash scripts/test_icon_sync_completeness.sh
+
   actionlint:
     runs-on: ubuntu-latest
     steps:
