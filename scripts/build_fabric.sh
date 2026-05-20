@@ -67,41 +67,57 @@ while [ $# -gt 0 ]; do
 done
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SOURCE_DIR="${REPO_ROOT}/source/fabric-svg-icons"
-DIST_DIR="${REPO_ROOT}/dist/Fabric/png"
+# SOURCE_DIR / DIST_DIR / SVG_DIR / record path are overridable via env so the
+# two-pass size-selection logic can be unit-tested against a synthetic fixture
+# SVG dir (BUILD_SELFTEST=1 skips the npm install + version/license probe +
+# count floor). Production defaults are unchanged.
+SOURCE_DIR="${BUILD_SOURCE_DIR:-${REPO_ROOT}/source/fabric-svg-icons}"
+DIST_DIR="${BUILD_DIST_DIR:-${REPO_ROOT}/dist/Fabric/png}"
+UPSTREAM_RECORD="${BUILD_UPSTREAM_RECORD:-${REPO_ROOT}/dist/Fabric/UPSTREAM-VERSION.txt}"
+SELFTEST="${BUILD_SELFTEST:-0}"
 NPM_PKG="@fabric-msft/svg-icons"
 
 # ---- Tooling probe ----
 command -v rsvg-convert >/dev/null 2>&1 || { echo "ERROR: rsvg-convert not installed (apt install librsvg2-bin)" >&2; exit 2; }
-command -v npm          >/dev/null 2>&1 || { echo "ERROR: npm not installed" >&2; exit 2; }
 
-# ---- Upstream version auto-detect (item a) ----
-FABRIC_VERSION="${FABRIC_VERSION:-}"
-if [ -z "${FABRIC_VERSION}" ]; then
-  FABRIC_VERSION=$(npm view "${NPM_PKG}" version 2>/dev/null | tail -1)
-fi
-if [ -z "${FABRIC_VERSION}" ]; then
-  echo "ERROR: cannot detect ${NPM_PKG} version from npm registry" >&2
-  exit 2
-fi
-echo "Upstream: ${NPM_PKG}@${FABRIC_VERSION}"
+if [ "${SELFTEST}" = "1" ]; then
+  # Self-test: SVG_DIR is pre-populated via BUILD_SVG_DIR; skip npm + probes.
+  FABRIC_VERSION="selftest"
+  SVG_DIR="${BUILD_SVG_DIR:?BUILD_SVG_DIR required in selftest}"
+  [ -d "${SVG_DIR}" ] || { echo "ERROR: BUILD_SVG_DIR not a dir: ${SVG_DIR}" >&2; exit 2; }
+  echo "SELFTEST: using pre-populated SVG_DIR=${SVG_DIR} (no npm install)"
+  mkdir -p "${DIST_DIR}"
+else
+  command -v npm          >/dev/null 2>&1 || { echo "ERROR: npm not installed" >&2; exit 2; }
 
-# ---- MIT license re-verification gate (re-checked every build) ----
-LICENSE=$(npm view "${NPM_PKG}@${FABRIC_VERSION}" license 2>/dev/null | tail -1)
-if [ "${LICENSE}" != "MIT" ]; then
-  echo "ERROR: ${NPM_PKG}@${FABRIC_VERSION} license is '${LICENSE}', expected MIT" >&2
-  exit 2
-fi
-echo "License: ${LICENSE} (gate satisfied)"
+  # ---- Upstream version auto-detect (item a) ----
+  FABRIC_VERSION="${FABRIC_VERSION:-}"
+  if [ -z "${FABRIC_VERSION}" ]; then
+    FABRIC_VERSION=$(npm view "${NPM_PKG}" version 2>/dev/null | tail -1)
+  fi
+  if [ -z "${FABRIC_VERSION}" ]; then
+    echo "ERROR: cannot detect ${NPM_PKG} version from npm registry" >&2
+    exit 2
+  fi
+  echo "Upstream: ${NPM_PKG}@${FABRIC_VERSION}"
 
-# ---- 1. npm install into isolated source dir ----
-mkdir -p "${SOURCE_DIR}"
-echo "Installing ${NPM_PKG}@${FABRIC_VERSION} into ${SOURCE_DIR}..."
-( cd "${SOURCE_DIR}" && npm install --no-package-lock --no-save --silent "${NPM_PKG}@${FABRIC_VERSION}" ) || {
-  echo "ERROR: npm install failed" >&2; exit 2;
-}
-SVG_DIR="${SOURCE_DIR}/node_modules/${NPM_PKG}/dist/svg"
-[ -d "${SVG_DIR}" ] || { echo "ERROR: expected SVG dir not found at ${SVG_DIR}" >&2; exit 2; }
+  # ---- MIT license re-verification gate (re-checked every build) ----
+  LICENSE=$(npm view "${NPM_PKG}@${FABRIC_VERSION}" license 2>/dev/null | tail -1)
+  if [ "${LICENSE}" != "MIT" ]; then
+    echo "ERROR: ${NPM_PKG}@${FABRIC_VERSION} license is '${LICENSE}', expected MIT" >&2
+    exit 2
+  fi
+  echo "License: ${LICENSE} (gate satisfied)"
+
+  # ---- 1. npm install into isolated source dir ----
+  mkdir -p "${SOURCE_DIR}"
+  echo "Installing ${NPM_PKG}@${FABRIC_VERSION} into ${SOURCE_DIR}..."
+  ( cd "${SOURCE_DIR}" && npm install --no-package-lock --no-save --silent "${NPM_PKG}@${FABRIC_VERSION}" ) || {
+    echo "ERROR: npm install failed" >&2; exit 2;
+  }
+  SVG_DIR="${SOURCE_DIR}/node_modules/${NPM_PKG}/dist/svg"
+  [ -d "${SVG_DIR}" ] || { echo "ERROR: expected SVG dir not found at ${SVG_DIR}" >&2; exit 2; }
+fi
 
 # ---- 2. Build the conversion list (Pass 1 + Pass 2) ----
 mkdir -p "${DIST_DIR}"
@@ -176,12 +192,12 @@ done <<< "${PASS2_LIST}"
 echo "Converted: ${CONVERTED}"
 
 # ---- 5. Persist UPSTREAM-VERSION.txt (item e) ----
-write_upstream_record "${REPO_ROOT}/dist/Fabric/UPSTREAM-VERSION.txt" "${NPM_PKG}@${FABRIC_VERSION}"
+write_upstream_record "${UPSTREAM_RECORD}" "${NPM_PKG}@${FABRIC_VERSION}"
 
 # ---- 6. Verify ----
 COUNT="$(find "${DIST_DIR}" -name '*.png' | wc -l)"
 echo "PNG count: ${COUNT}"
-if [ "${COUNT}" -lt 250 ]; then
+if [ "${SELFTEST}" != "1" ] && [ "${COUNT}" -lt 250 ]; then
   echo "ERROR: count < 250, aborting (expected ~312 Fabric icons across sizes 24/28/32/40/48)" >&2
   exit 1
 fi
