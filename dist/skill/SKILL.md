@@ -1,7 +1,7 @@
 ---
 name: azure-architecture-diagram
 description: Use this skill when creating Microsoft Azure, Microsoft Fabric, Kubernetes, Microsoft Fluent UI-decorated, or Devicon dev-tool architecture diagrams using PlantUML. Covers icon usage from the canonical icon repository (Azure + Fabric + Kubernetes + FluentUI + Devicon), layout patterns (clusters, alignment, edge styling), multiple diagram types (system architecture, sequence flow, component view, deployment topology, data engineering pipeline, mixed AKS deployment, UI-decorated Azure, DevOps pipeline with dev tools), and Confluence integration via PlantUML apps. Triggers on requests like "draw Azure architecture", "draw architecture for [service]", "create deployment diagram", "PlantUML diagram for [project]", "draw Fabric data pipeline", "Lakehouse + Notebook + Warehouse diagram", "Kubernetes deployment diagram", "AKS architecture", "K8s Pod + Service + Deployment diagram", "diagram with status icons", "Azure with user/auth/data icons", "devops pipeline diagram", "draw [language/framework/tool] in architecture".
-version: 1.4.2
+version: 1.5.0
 requires_icons: ">=1.4.0"
 ---
 
@@ -681,6 +681,23 @@ General workflow when using a PlantUML app in Confluence (e.g., AppsFoundry, wew
 - GitHub Actions render `.puml` → PNG.
 - Upload to Confluence as attachment fallback (in case the server fails).
 
+## Editing an existing diagram
+
+When the user asks you to **change a diagram they already have** (add a service, remove one, re-wire a connection, swap an icon), revise their existing `.puml` in place — do **not** re-author it from scratch. Re-authoring throws away the layout the user tuned and produces a noisy, unreviewable diff.
+
+Rules for an edit:
+
+1. **Keep the existing scaffold.** Preserve the `@startuml <Name>`, the entire skinparam/setup block, the cluster (`rectangle "..." { }`) structure, and any `together {}` / hidden-edge (`-[hidden]-`) layout anchors. These encode the user's layout intent.
+2. **Make the minimal diff.** Touch only the lines the change requires. Adding a node = one new `rectangle` line + the edges that connect it. Removing a node = delete its declaration + every edge that references its alias. Swapping an icon = change only the `<img:URL>` (and the label if the product name changed).
+3. **Look up any new/changed icon in the relevant `INDEX.md`** before emitting its `<img:URL>` — the filename rule (see § "Filename rule (non-negotiable)") applies to edits exactly as to authoring. A guessed filename 404s and renders a broken-image placeholder.
+4. **Reuse the existing alias style.** If the diagram names nodes `as fd`, `as aks`, follow that convention for new nodes so the edge list stays readable.
+5. **Don't re-flow the layout unless asked.** Keep `direction`, `ranksep`/`nodesep`, and existing hidden edges as-is. Only restructure layout when the user explicitly asks for it (e.g. "make it left-to-right").
+6. **Preserve labels + cluster membership.** A new node usually belongs inside an existing cluster — place it there, not at the top level, unless it is genuinely a new boundary.
+
+If the user pastes a diagram that uses `!define` macros or guessed filenames, fix those to literal INDEX-verified URLs as part of the edit (and say so), since they would otherwise render broken.
+
+See [`examples/10-edit-existing.puml`](examples/10-edit-existing.puml) for a worked before/after edit (adding a cache node to an existing 3-tier diagram).
+
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
@@ -733,3 +750,4 @@ Renderable example diagrams live in `examples/` (file list mirrors `manifest.jso
 - [`07-azure-aks-mixed.puml`](examples/07-azure-aks-mixed.puml) — Azure-fronted AKS deployment with a Kubernetes workload subgraph (Front Door + App Gateway → AKS Service → Deployment + Pods + ConfigMap + Secret → Azure SQL). Canonical Azure + Kubernetes mixed example, added in `icons-v1.2.0` / `skill-v1.2.0`.
 - [`08-azure-fluentui-mixed.puml`](examples/08-azure-fluentui-mixed.puml) — Azure web architecture decorated with FluentUI UI affordances (Cloud boundary, Shield + Person Add for auth, status indicators, organisation context). Canonical Azure + FluentUI mixed example, added in `icons-v1.3.0` / `skill-v1.3.0`.
 - [`09-devops-pipeline.puml`](examples/09-devops-pipeline.puml) — DevOps pipeline from source (GitHub) through CI/CD (GitHub Actions + Argo CD) into AKS / Kubernetes runtime, with Prometheus + Grafana observability and a Postgres data store. Canonical Devicon-decorated DevOps example, added in `icons-v1.4.0` / `skill-v1.4.0`.
+- [`10-edit-existing.puml`](examples/10-edit-existing.puml) — worked before/after **edit** of an existing 3-tier diagram (adds a Redis cache node + re-wires it) demonstrating the § "Editing an existing diagram" minimal-diff workflow. Added in `skill-v1.5.0`.
