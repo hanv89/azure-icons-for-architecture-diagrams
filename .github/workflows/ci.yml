@@ -95,6 +95,9 @@ jobs:
       - name: scripts/build_fabric.test.sh
         run: bash scripts/build_fabric.test.sh
 
+      - name: scripts/iac_to_diagram.test.sh
+        run: bash scripts/iac_to_diagram.test.sh
+
   contract:
     # Offline contract gates: the shipped dist/ + skill bundle must be
     # internally consistent. No network. See each script's header.

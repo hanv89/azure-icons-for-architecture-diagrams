@@ -147,6 +147,28 @@ Both recipes upload the same bundle (SKILL.md + per-vendor INDEX catalogs + work
 
 The skill is **PlantUML-first** because PlantUML is the only diagram-as-code language that embeds the project's hosted vendor PNGs inline (`<img:URL>`). For diagrams that should **render natively in GitHub Markdown** with no hosting dependency, the skill also supports a **Mermaid mode** — see SKILL.md § "Mermaid mode" and [`dist/skill/examples/11-mermaid-architecture.mmd`](dist/skill/examples/11-mermaid-architecture.mmd). Note: Mermaid is **icon-light** (it cannot embed the vendor PNGs the way PlantUML does — nodes are text-labelled with the product word-mark). For branded vendor-icon diagrams, use PlantUML.
 
+## IaC → diagram (experimental)
+
+`scripts/iac_to_diagram.mjs` turns a **Terraform** file into a PlantUML
+architecture diagram that uses this repo's Azure icons:
+
+```bash
+node scripts/iac_to_diagram.mjs path/to/main.tf > architecture.puml
+# then render architecture.puml as usual (play.plantuml.com, Confluence, CI)
+```
+
+It extracts `resource "azurerm_<type>" "<name>"` blocks, maps known types to
+Azure icons via [`scripts/fixtures/iac-azurerm-icon-map.tsv`](scripts/fixtures/iac-azurerm-icon-map.tsv),
+and infers edges from Terraform references (`<type>.<name>`) between resources.
+
+**Scope + limitations (experimental):**
+- **Terraform `azurerm` only** (a curated subset of ~24 common resource types). Bicep / CloudFormation / AWS / GCP are not supported yet.
+- **Best-effort regex extraction** — no HCL modules, `for_each`/`count`, interpolation, or data sources.
+- **Unknown resource types are not dropped** — they render as plain text-labelled nodes and are listed in a coverage report on stderr, so you can see what was and wasn't iconified.
+- Pin the icon `git-ref` with `--ref <tag>` (default `main`).
+
+This is a starting point for IaC-driven diagrams; coverage expands as the map grows. Contributions to the map table are welcome.
+
 ## CLI reference
 
 `npx @hanv89/azure-arch-skill@latest <command> [flags]`
