@@ -1,7 +1,7 @@
 {
   "$schema": "./manifest.schema.json",
   "name": "azure-architecture-diagram",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "requires_icons": ">=1.4.0",
   "icons_version": "1.4.0",
   "files": [
@@ -16,6 +16,9 @@
     { "src": "dist/skill/examples/08-azure-fluentui-mixed.puml", "dest": "examples/08-azure-fluentui-mixed.puml", "role": "example" },
     { "src": "dist/skill/examples/09-devops-pipeline.puml",      "dest": "examples/09-devops-pipeline.puml",      "role": "example" },
     { "src": "dist/skill/examples/10-edit-existing.puml",        "dest": "examples/10-edit-existing.puml",        "role": "example" },
-    { "src": "dist/skill/examples/11-mermaid-architecture.mmd",  "dest": "examples/11-mermaid-architecture.mmd",  "role": "example" }
+    { "src": "dist/skill/examples/11-mermaid-architecture.mmd",  "dest": "examples/11-mermaid-architecture.mmd",  "role": "example" },
+    { "src": "dist/skill/examples/12-mermaid-icons.mmd",         "dest": "examples/12-mermaid-icons.mmd",         "role": "example" },
+    { "src": "dist/skill/examples/assets/icon.css",              "dest": "examples/assets/icon.css",              "role": "asset" },
+    { "src": "dist/skill/examples/assets/render-mermaid.sh",     "dest": "examples/assets/render-mermaid.sh",     "role": "asset" }
   ]
 }

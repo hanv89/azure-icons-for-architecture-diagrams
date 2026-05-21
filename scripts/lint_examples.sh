@@ -31,7 +31,11 @@ shopt -s nullglob
 
 # (A) Mermaid .mmd
 for f in "${EX}"/*.mmd; do
-  first="$(grep -vE '^\s*(%%|$)' "${f}" | head -1 | sed -E 's/^\s+//')"
+  # Strip a leading `---` YAML frontmatter config block (Mermaid `config:`
+  # directive) if present, then ignore `%%` comments + blanks, so the first
+  # *meaningful* line is the diagram type.
+  body="$(awk 'NR==1 && $0=="---" {infm=1; next} infm && $0=="---" {infm=0; next} !infm {print}' "${f}")"
+  first="$(printf '%s\n' "${body}" | grep -vE '^\s*(%%|$)' | head -1 | sed -E 's/^\s+//')"
   if ! printf '%s' "${first}" | grep -qE "^(${MERMAID_TYPES})\b"; then
     fail "${f}: first non-comment line is not a known Mermaid diagram type: '${first}'"
   fi

@@ -80,6 +80,14 @@ for f in "${EXAMPLES_SRC_DIR}"/*.puml "${EXAMPLES_SRC_DIR}"/*.mmd; do
   [ -e "${f}" ] || continue
   cp "${f}" "${STAGE}/examples/$(basename "${f}")"
 done
+# Example support assets (icon.css, render-mermaid.sh) preserve their subdir.
+if [ -d "${EXAMPLES_SRC_DIR}/assets" ]; then
+  mkdir -p "${STAGE}/examples/assets"
+  for f in "${EXAMPLES_SRC_DIR}"/assets/*; do
+    [ -e "${f}" ] || continue
+    cp "${f}" "${STAGE}/examples/assets/$(basename "${f}")"
+  done
+fi
 
 # Per-vendor INDEX + USAGE-RULES.
 for v in "${VENDORS_SORTED[@]}"; do
