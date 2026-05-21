@@ -9,6 +9,7 @@ import {
   baseUrl,
   fetchManifest,
   stripFrontmatter,
+  joinWithinTarget,
 } from "./_shared";
 
 // ---------------------------------------------------------------------------
@@ -184,4 +185,45 @@ test("stripFrontmatter: returns body unchanged when no frontmatter", () => {
 test("stripFrontmatter: CRLF frontmatter handled", () => {
   const md = "---\r\nname: x\r\n---\r\n# Body";
   assert.equal(stripFrontmatter(md), "# Body");
+});
+
+// ---------------------------------------------------------------------------
+// Path-traversal hardening (manifest dest/src). A malicious served manifest
+// must not be able to escape the install target.
+// ---------------------------------------------------------------------------
+
+const VALID_SKILL = { src: "dist/skill/SKILL.md", dest: "SKILL.md", role: "skill" };
+function manifestWith(extra: object) {
+  return JSON.stringify({
+    name: "azure-architecture-diagram", version: "1.6.3", requires_icons: ">=1.4.0",
+    icons_version: "1.4.0", files: [VALID_SKILL, extra],
+  });
+}
+
+test("fetchManifest: rejects a `..` traversal in dest", async () => {
+  const m = mockFetchBody(manifestWith({ src: "dist/skill/x.puml", dest: "../../../../.bashrc", role: "example" }));
+  try { await assert.rejects(() => fetchManifest(BASE), /relative path with no '\.\.'/); }
+  finally { m.restore(); }
+});
+
+test("fetchManifest: rejects an absolute dest", async () => {
+  const m = mockFetchBody(manifestWith({ src: "dist/skill/x.puml", dest: "/etc/cron.d/evil", role: "example" }));
+  try { await assert.rejects(() => fetchManifest(BASE), /relative path with no/); }
+  finally { m.restore(); }
+});
+
+test("fetchManifest: rejects a `..` traversal in src", async () => {
+  const m = mockFetchBody(manifestWith({ src: "../../../secret", dest: "examples/x.puml", role: "example" }));
+  try { await assert.rejects(() => fetchManifest(BASE), /relative path with no/); }
+  finally { m.restore(); }
+});
+
+test("joinWithinTarget: returns the path for an in-target dest", () => {
+  const t = "/home/u/.claude/skills/azure-architecture-diagram";
+  assert.equal(joinWithinTarget(t, "examples/01.puml"), path.join(t, "examples/01.puml"));
+});
+
+test("joinWithinTarget: throws on an escaping dest", () => {
+  const t = "/home/u/.claude/skills/azure-architecture-diagram";
+  assert.throws(() => joinWithinTarget(t, "../../../../.bashrc"), /outside install target/);
 });
