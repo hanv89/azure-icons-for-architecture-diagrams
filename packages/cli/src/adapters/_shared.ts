@@ -165,6 +165,22 @@ export async function safeResolveTarget(
 }
 
 /**
+ * Defense-in-depth: assert a manifest `dest` resolves inside `target` before
+ * any write/unlink. `fetchManifest` already rejects absolute / `..` paths at
+ * the trust boundary; this is the second guard at the filesystem-touch site so
+ * a per-file path can never escape the install dir even if the parse-time
+ * check is ever bypassed. Returns the safe absolute path.
+ */
+export function joinWithinTarget(target: string, dest: string): string {
+  const full = path.resolve(target, dest);
+  const root = path.resolve(target);
+  if (full !== root && !full.startsWith(root + path.sep)) {
+    throw new Error(`refusing to operate on ${full} (from dest '${dest}') - outside install target ${root}`);
+  }
+  return full;
+}
+
+/**
  * Fetch with timeout and 2-retry exponential backoff on transient 5xx
  * responses. Used by `fetchText` and `headOk`; both inherit the retry
  * behavior. The 2-retry default was added to absorb transient 5xx upstream
@@ -256,6 +272,16 @@ export async function fetchManifest(base: string): Promise<Manifest> {
     for (const key of ["src", "dest", "role"] as const) {
       if (typeof (f as Partial<ManifestFile>)[key] !== "string") {
         throw new Error(`manifest ${url} files[${i}].${key} missing`);
+      }
+    }
+    // Path-traversal guard: dest/src are joined onto the install target +
+    // the fetch base. A manifest from a compromised repo / malicious tag with
+    // an absolute path or a `..` segment could escape the target dir (arbitrary
+    // file write) or fetch off-path. Reject both here, at the trust boundary.
+    for (const key of ["dest", "src"] as const) {
+      const p = (f as ManifestFile)[key];
+      if (path.isAbsolute(p) || p.split(/[\\/]/).includes("..")) {
+        throw new Error(`manifest ${url} files[${i}].${key} must be a relative path with no '..' segment (got: ${p})`);
       }
     }
   }
@@ -514,12 +540,12 @@ export function makeFolderInstallAdapter(cfg: FolderAdapterConfig): Adapter {
       await verifyIconsAvailability(base, manifest, opts.version);
 
       for (const { dest } of manifest.files) {
-        await fs.mkdir(path.dirname(path.join(target, dest)), { recursive: true });
+        await fs.mkdir(path.dirname(joinWithinTarget(target, dest)), { recursive: true });
       }
-      await fs.writeFile(path.join(target, manifest.files[0].dest), skillMd, "utf8");
+      await fs.writeFile(joinWithinTarget(target, manifest.files[0].dest), skillMd, "utf8");
       for (const { src, dest } of manifest.files.slice(1)) {
         const body = await fetchText(`${base}/${src}`);
-        await fs.writeFile(path.join(target, dest), body, "utf8");
+        await fs.writeFile(joinWithinTarget(target, dest), body, "utf8");
       }
 
       // Persist the manifest so uninstall can iterate the file list without
@@ -579,7 +605,11 @@ export function makeFolderInstallAdapter(cfg: FolderAdapterConfig): Adapter {
           throw new Error(`persisted manifest at ${persistedPath} is not valid JSON: ${msg}. Remove the file manually then retry.`);
         }
         for (const f of persistedManifest.files) {
-          await fs.unlink(path.join(target, f.dest)).catch(() => null);
+          // joinWithinTarget guards against a tampered persisted manifest whose
+          // dest escapes target (which would delete files outside the install).
+          let victim: string;
+          try { victim = joinWithinTarget(target, f.dest); } catch { continue; }
+          await fs.unlink(victim).catch(() => null);
         }
         await fs.unlink(persistedPath).catch(() => null);
 
