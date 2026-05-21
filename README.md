@@ -143,9 +143,12 @@ If your primary surface is a chat-UI rather than a CLI/IDE, install the skill in
 
 Both recipes upload the same bundle (SKILL.md + per-vendor INDEX catalogs + worked examples + per-vendor USAGE-RULES + NOTICE) as the agent's knowledge files, then paste a short system prompt that routes the model to SKILL.md.
 
-### Mermaid mode (icon-light, GitHub-native)
+### Mermaid mode (two sub-modes)
 
-The skill is **PlantUML-first** because PlantUML is the only diagram-as-code language that embeds the project's hosted vendor PNGs inline (`<img:URL>`). For diagrams that should **render natively in GitHub Markdown** with no hosting dependency, the skill also supports a **Mermaid mode** — see SKILL.md § "Mermaid mode" and [`dist/skill/examples/11-mermaid-architecture.mmd`](dist/skill/examples/11-mermaid-architecture.mmd). Note: Mermaid is **icon-light** (it cannot embed the vendor PNGs the way PlantUML does — nodes are text-labelled with the product word-mark). For branded vendor-icon diagrams, use PlantUML.
+The skill is **PlantUML-first**, but **Mermaid can show the vendor icons too** — via inline HTML node labels — when rendered by a real browser engine. Two sub-modes (see SKILL.md § "Mermaid mode"):
+
+- **Icon-light** — for diagrams that render **inline on GitHub** (GitHub sanitises Mermaid and strips inline `<img>`): text labels only. See [`examples/11-mermaid-architecture.mmd`](dist/skill/examples/11-mermaid-architecture.mmd).
+- **Mermaid + icon (cli/local render)** — the default when you want icons; deliverable is a PNG/Confluence/doc. Inline `<img>` labels + the shipped [`examples/assets/render-mermaid.sh`](dist/skill/examples/assets/render-mermaid.sh) (mermaid-cli with `--no-sandbox` + `htmlLabels`/`securityLevel:loose`) + [`examples/assets/icon.css`](dist/skill/examples/assets/icon.css). See [`examples/12-mermaid-icons.mmd`](dist/skill/examples/12-mermaid-icons.mmd). Icons appear under cli/browser render, **not** when viewing the `.mmd` on GitHub.
 
 ## IaC → diagram (experimental)
 
@@ -211,7 +214,7 @@ This is a starting point for IaC-driven diagrams; coverage expands as the map gr
 
 ## Project status
 
-The icon library is at `icons-v1.4.0` and the skill bundle (plus its npm package `@hanv89/azure-arch-skill`) is at `skill-v1.6.1`. The two tracks are independent and versioned separately, tied together by the skill's `requires_icons` range. The skill now also supports an icon-light Mermaid mode + an experimental Terraform→PlantUML generator (see § "Mermaid mode" and § "IaC → diagram").
+The icon library is at `icons-v1.4.0` and the skill bundle (plus its npm package `@hanv89/azure-arch-skill`) is at `skill-v1.6.2`. The two tracks are independent and versioned separately, tied together by the skill's `requires_icons` range. The skill also supports a Mermaid mode (vendor icons via inline HTML under cli render; icon-light on GitHub) + an experimental Terraform→PlantUML generator (see § "Mermaid mode" and § "IaC → diagram").
 
 Both tracks carry a SemVer compatibility commitment: within the `1.x` line, the CLI flag surface and the skill's install contract will not break — breaking changes wait for `2.0.0`. The icon library follows the same SemVer discipline on its own track.
 

@@ -48,8 +48,8 @@
           },
           "role": {
             "type": "string",
-            "enum": ["skill", "example"],
-            "description": "`skill` for the top-level SKILL.md. `example` for entries under examples/. Adapters MAY treat roles differently."
+            "enum": ["skill", "example", "asset"],
+            "description": "`skill` for the top-level SKILL.md. `example` for entries under examples/. `asset` for example support files (e.g. examples/assets/icon.css, render-mermaid.sh) that are not themselves diagrams. Adapters MAY treat roles differently."
           }
         }
       }
