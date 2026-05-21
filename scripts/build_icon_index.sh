@@ -50,16 +50,31 @@ lookup_devicon() {
   awk -F'\t' -v k="${key}" '$1 == k { print $2 "\t" $3 "\t" $4 "\t" $5; exit }' "${tsv}"
 }
 
+ACRONYMS_AZURE_TSV="${FIXTURES_DIR}/acronyms-azure.tsv"
+
+# apply_acronyms <tsv> — read stdin, apply each `<pattern><TAB><replacement>` row
+# from the TSV in order as `sed -E 's/\b<pattern>\b/<replacement>/g'`. Order in
+# the file matters (single-token acronym fixes precede multi-token re-joins).
+# Extracted from azure_humanize so AWS/GCP (Phase 3) can supply their own TSV.
+apply_acronyms() {
+  local tsv="$1" expr="" pat rep
+  while IFS=$'\t' read -r pat rep; do
+    case "${pat}" in ''|\#*) continue ;; esac
+    [ -n "${rep}" ] || continue
+    expr="${expr}s/\\b${pat}\\b/${rep}/g;"
+  done < "${tsv}"
+  if [ -n "${expr}" ]; then sed -E "${expr}"; else cat; fi
+}
+
 # azure_humanize <PascalCaseStem>
 #   AzureVirtualMachine → "Azure Virtual Machine"; AzureSQLServer → "Azure SQL Server".
-#   The final sed pass uppercases known short acronyms that upstream filenames
-#   spell mixed-case (e.g. AzureCosmosDb → "Cosmos Db" → "Cosmos DB"). Extend
-#   the list as new vendors land if they introduce new ones.
+#   PascalCase split, then the acronym whitelist in scripts/fixtures/acronyms-azure.tsv
+#   uppercases/re-joins known mixed-case acronyms (e.g. "Cosmos Db" → "Cosmos DB").
+#   Edit the TSV (not this function) to extend the list.
 azure_humanize() {
   printf '%s\n' "$1" \
     | sed -E 's/([a-z])([A-Z])/\1 \2/g; s/([A-Z])([A-Z][a-z])/\1 \2/g' \
-    | sed -E 's/\bDb\b/DB/g; s/\bAi\b/AI/g; s/\bMl\b/ML/g; s/\bVm\b/VM/g; s/\bIot\b/IoT/g; s/\bApi\b/API/g; s/\bDns\b/DNS/g; s/\bCdn\b/CDN/g; s/\bWaf\b/WAF/g' \
-    | sed -E 's/\bIo T\b/IoT/g; s/\bMy SQL\b/MySQL/g; s/\bPostgre SQL\b/PostgreSQL/g; s/\bMaria DB\b/MariaDB/g; s/\bSignal R\b/SignalR/g; s/\bHD Insight\b/HDInsight/g'
+    | apply_acronyms "${ACRONYMS_AZURE_TSV}"
 }
 
 # fabric_humanize <snake_case_stem>
