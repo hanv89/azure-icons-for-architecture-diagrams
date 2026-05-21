@@ -58,6 +58,21 @@ got="$(azure_humanize 'AzureAKSCluster')"
   && pass "azure_humanize handles AKS acronym" \
   || fail "azure_humanize: expected 'Azure AKS Cluster', got '${got}'"
 
+# ---- azure_humanize: multi-token re-join from TSV (Cosmos Db -> Cosmos DB) ----
+got="$(azure_humanize 'AzureCosmosDb')"
+[ "${got}" = "Azure Cosmos DB" ] \
+  && pass "azure_humanize re-joins Db->DB via the acronym TSV" \
+  || fail "azure_humanize: expected 'Azure Cosmos DB', got '${got}'"
+
+# ---- apply_acronyms: data-driven from an arbitrary TSV (supports AWS/GCP) ----
+acr_tmp="$(mktemp)"
+printf 'Ec2\tEC2\nDynamo DB\tDynamoDB\n' > "${acr_tmp}"
+got="$(printf 'AWS Ec2 Dynamo DB\n' | apply_acronyms "${acr_tmp}")"
+rm -f "${acr_tmp}"
+[ "${got}" = "AWS EC2 DynamoDB" ] \
+  && pass "apply_acronyms applies an arbitrary (AWS) TSV in order" \
+  || fail "apply_acronyms: expected 'AWS EC2 DynamoDB', got '${got}'"
+
 # ---- fabric_humanize: snake_case ----
 got="$(fabric_humanize 'power_bi')"
 [ "${got}" = "Power Bi" ] \
